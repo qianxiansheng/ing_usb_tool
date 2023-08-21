@@ -16,6 +16,12 @@
     <Filter Include="src\util">
       <UniqueIdentifier>{80b73a41-2702-44bf-a341-47f1ccd9721e}</UniqueIdentifier>
     </Filter>
+    <Filter Include="src\passthrough">
+      <UniqueIdentifier>{cfbba8fd-7ac0-4324-b638-9f5c055c7d83}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\bingen">
+      <UniqueIdentifier>{8e7131ab-9e17-4b4d-a137-15acb08b370d}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\imgui\imgui.cpp">
@@ -57,9 +63,6 @@
     <ClCompile Include="src\imgui\extensions\ImConsole.cpp">
       <Filter>src\imgui\extensions</Filter>
     </ClCompile>
-    <ClCompile Include="src\bin.cpp">
-      <Filter>src</Filter>
-    </ClCompile>
     <ClCompile Include="src\imgui\extensions\ImFileDialog.cpp">
       <Filter>src\imgui\extensions</Filter>
     </ClCompile>
@@ -68,6 +71,21 @@
     </ClCompile>
     <ClCompile Include="src\util\ini.c">
       <Filter>src\util</Filter>
+    </ClCompile>
+    <ClCompile Include="src\passthrough\passthrough.cpp">
+      <Filter>src\passthrough</Filter>
+    </ClCompile>
+    <ClCompile Include="src\bingen\bingen.cpp">
+      <Filter>src\bingen</Filter>
+    </ClCompile>
+    <ClCompile Include="src\bingen\bin.cpp">
+      <Filter>src\bingen</Filter>
+    </ClCompile>
+    <ClCompile Include="src\bingen\memedit.cpp">
+      <Filter>src\bingen</Filter>
+    </ClCompile>
+    <ClCompile Include="src\passthrough\usbdevtree.cpp">
+      <Filter>src\passthrough</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

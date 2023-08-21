@@ -11,6 +11,8 @@ namespace utils {
 	void Alert(bool show, const char* title, const char* text);
 	bool Confirm(bool show, const char* title, const char* text);
 
+
+
 	void readFileData(std::filesystem::path path, void* out_data);
 	std::string readFileText(std::filesystem::path path);
 
@@ -18,6 +20,14 @@ namespace utils {
 	uint8_t htoi_8(const char* c);
 	uint16_t htoi_16(const char* c);
 	uint32_t htoi_32(const char* c);
+	void ValidateU8Text(char* text, uint8_t& v);
+	void ValidateU16Text(char* text, uint16_t& v);
+	void ValidateIntText(char* text, uint32_t& v);
+	void ValidateDataText(char* text, uint8_t* data, size_t& size);
+	void ValidateHex16ByteText(char* text, uint8_t* data);
+	bool ValidateVersion(const char* v);
+
+
 	std::string dec2hex(uint32_t i);
 	void printf_hexdump(uint8_t* data, uint16_t size);
 	unsigned char Hex2String(const unsigned char* pSrc, unsigned char* dest, int nL);

@@ -163,7 +163,9 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="src\bin.cpp" />
+    <ClCompile Include="src\bingen\bin.cpp" />
+    <ClCompile Include="src\bingen\bingen.cpp" />
+    <ClCompile Include="src\bingen\memedit.cpp" />
     <ClCompile Include="src\imgui\backends\imgui_impl_glfw.cpp" />
     <ClCompile Include="src\imgui\backends\imgui_impl_opengl3.cpp" />
     <ClCompile Include="src\imgui\backends\imgui_impl_win32.cpp" />
@@ -175,6 +177,8 @@
     <ClCompile Include="src\imgui\imgui_tables.cpp" />
     <ClCompile Include="src\imgui\imgui_widgets.cpp" />
     <ClCompile Include="src\main.cpp" />
+    <ClCompile Include="src\passthrough\passthrough.cpp" />
+    <ClCompile Include="src\passthrough\usbdevtree.cpp" />
     <ClCompile Include="src\usb\usb_utils.cpp" />
     <ClCompile Include="src\util\aes.cpp" />
     <ClCompile Include="src\util\ini.c" />

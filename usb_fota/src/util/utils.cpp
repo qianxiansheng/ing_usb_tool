@@ -81,6 +81,7 @@ bool utils::Confirm(bool show, const char* title, const char* text)
 	return result;
 }
 
+
 void utils::readFileData(std::filesystem::path path, void* out_data)
 {
 	std::cout << path << std::endl;
@@ -126,6 +127,110 @@ uint16_t utils::htoi_16(const char* c)
 uint32_t utils::htoi_32(const char* c)
 {
 	return (htoi_8(c) << 24) | (htoi_8(c + 2) << 16) | (htoi_8(c + 4) << 8) | htoi_8(c + 6);
+}
+
+void utils::ValidateU8Text(char* text, uint8_t& v)
+{
+	// Load address
+	if (text[0] == '\0') {
+		v = 0;
+		strcpy(text, "00");
+	}
+	else {
+		if (strlen(text) == 1) {
+			text[2] = '\0';
+			text[1] = text[0];
+			text[0] = '0';
+		}
+		v = utils::htoi_8(text);
+	}
+}
+void utils::ValidateU16Text(char* text, uint16_t& v)
+{
+	// Load address
+	if (text[0] == '\0') {
+		v = 0;
+		strcpy(text, "0000");
+	}
+	else {
+		if (strlen(text) == 1) {
+			text[4] = '\0';
+			text[3] = text[0];
+			text[2] = '0';
+			text[1] = '0';
+			text[0] = '0';
+		}
+		if (strlen(text) == 2) {
+			text[4] = '\0';
+			text[3] = text[1];
+			text[2] = text[0];
+			text[1] = '0';
+			text[0] = '0';
+		}
+		if (strlen(text) == 3) {
+			text[4] = '\0';
+			text[3] = text[2];
+			text[2] = text[1];
+			text[1] = text[0];
+			text[0] = '0';
+		}
+		v = utils::htoi_16(text);
+	}
+}
+void utils::ValidateIntText(char* text, uint32_t& v)
+{
+	// Load address
+	if (text[0] == '\0') {
+		v = 0;
+		strcpy(text, "0");
+	}
+	else {
+		v = std::stoi(text);
+	}
+}
+void utils::ValidateDataText(char* text, uint8_t* data, size_t& size)
+{
+	// Load address
+	if (text[0] == '\0') {
+		size = 0;
+	}
+	else {
+		if (text[0] == '0' && text[1] == 'x') {
+			size = (strlen(text) - 2) / 2;
+
+			for (size_t i = 0; i < size; ++i) {
+				data[i] = utils::htoi_8(text + 2 + (i * 2));
+			}
+		}
+		else {
+			size = strlen(text);
+			strcpy((char*)data, text);
+		}
+	}
+}
+void utils::ValidateHex16ByteText(char* text, uint8_t* data)
+{
+	size_t cl = strlen(text);
+	uint8_t rl = 32 - cl;
+	std::stringstream ss;
+	for (uint8_t i = 0; i < rl; ++i)
+		ss << '0';
+	ss << text;
+	strcpy(text, ss.str().c_str());
+
+	utils::String2Hex(text, data, 32);
+}
+bool utils::ValidateVersion(const char* v)
+{
+	if (v[0] != 'V' || v[2] != '.' || v[4] != '.')
+		return false;
+	if (v[1] < '0' || '9' < v[1])
+		return false;
+	if (v[3] < '0' || '9' < v[3])
+		return false;
+	if (v[5] < '0' || '9' < v[5])
+		return false;
+	return true;
 }
 
 
