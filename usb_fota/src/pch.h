@@ -1,6 +1,6 @@
 #pragma once
 
-#define APP_TITLE           "Ingchips USB FOTA tool"
+#define APP_TITLE           "Ingchips USB IAP tool"
 #define DEFAULT_FONT		"c:\\Windows\\Fonts\\msyh.ttc"
 
 #define EP_MAX_SIZE  64

@@ -78,7 +78,7 @@ static void Cube_ReadLine(ImGuiContext*, ImGuiSettingsHandler*, void* entry, con
 
 static void Cube_WriteAll(ImGuiContext* ctx, ImGuiSettingsHandler* handler, ImGuiTextBuffer* buf)
 {
-	buf->append("[FOTA][config]\n");
+	buf->append("[IAP][config]\n");
 	buf->appendf("export_dir=%s\n", export_dir.generic_string().c_str());
 }
 
@@ -112,8 +112,8 @@ static bool main_init(int argc, char* argv[])
 	InitUSBDeviceTree();
 
 	static ImGuiSettingsHandler ini_handler;
-	ini_handler.TypeName = "FOTA";
-	ini_handler.TypeHash = ImHashStr("FOTA");
+	ini_handler.TypeName = "IAP";
+	ini_handler.TypeHash = ImHashStr("IAP");
 	ini_handler.ClearAllFn = Cube_ClearAll;
 	ini_handler.ReadOpenFn = Cube_ReadOpen;
 	ini_handler.ReadLineFn = Cube_ReadLine;

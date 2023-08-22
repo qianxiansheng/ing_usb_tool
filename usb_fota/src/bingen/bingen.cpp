@@ -63,7 +63,7 @@ static std::string ExportFileName()
 	char buf[32] = { 0 };
 
 	std::stringstream ss;
-	ss << "INGOTA_";
+	ss << "INGIAP_";
 	if (strlen(c.proj_code) <= 5)
 		ss << c.proj_code << '_';
 	else
@@ -309,7 +309,7 @@ void ShowBinGenWindow(bool* p_open)
 	ImGui::SameLine();
 	ImGui::Text("[%08X]", c.in_crc);
 	ImGui::SameLine();
-	utils::HelpMarker("Used for verifying the original FOTA bin.");
+	utils::HelpMarker("Used for verifying the original IAP bin.");
 
 	ShowSubTitle("Encryption");//=======================================================
 
@@ -319,7 +319,7 @@ void ShowBinGenWindow(bool* p_open)
 	ImGuiDCXAxisAlign(cl);
 	ImGui::Checkbox("##ENCRYPTION_ENABLE", &c.encryption_enable);
 	ImGui::SameLine();
-	utils::HelpMarker("Encrypt FOTA bin data, programmers know the key, old programs need to know how to decrypt it.");
+	utils::HelpMarker("Encrypt IAP bin data, programmers know the key, old programs need to know how to decrypt it.");
 
 
 	if (c.encryption_enable)
