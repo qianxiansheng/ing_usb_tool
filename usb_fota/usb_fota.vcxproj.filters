@@ -10,9 +10,6 @@
     <Filter Include="src\imgui\extensions">
       <UniqueIdentifier>{fad56ac4-a965-488c-86dc-66a3156ccc3a}</UniqueIdentifier>
     </Filter>
-    <Filter Include="src\usb">
-      <UniqueIdentifier>{2ea3eb05-85ff-4a5d-9a3a-3cd6ae296f7c}</UniqueIdentifier>
-    </Filter>
     <Filter Include="src\util">
       <UniqueIdentifier>{80b73a41-2702-44bf-a341-47f1ccd9721e}</UniqueIdentifier>
     </Filter>
@@ -21,6 +18,12 @@
     </Filter>
     <Filter Include="src\bingen">
       <UniqueIdentifier>{8e7131ab-9e17-4b4d-a137-15acb08b370d}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\ingiap">
+      <UniqueIdentifier>{eca7e19b-940a-47db-9015-889742152b6c}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\usb">
+      <UniqueIdentifier>{2ea3eb05-85ff-4a5d-9a3a-3cd6ae296f7c}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -85,6 +88,12 @@
       <Filter>src\bingen</Filter>
     </ClCompile>
     <ClCompile Include="src\passthrough\usbdevtree.cpp">
+      <Filter>src\passthrough</Filter>
+    </ClCompile>
+    <ClCompile Include="src\ingiap\ingiap.cpp">
+      <Filter>src\ingiap</Filter>
+    </ClCompile>
+    <ClCompile Include="src\passthrough\hidtool.cpp">
       <Filter>src\passthrough</Filter>
     </ClCompile>
   </ItemGroup>

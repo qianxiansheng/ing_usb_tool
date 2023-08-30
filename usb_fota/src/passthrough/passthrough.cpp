@@ -24,14 +24,14 @@ size_t data_size = 0;
 uint8_t sendData[DATA_INPUT_BUFF_MAX_SIZE] = { 0 };
 uint8_t recvData[DATA_INPUT_BUFF_MAX_SIZE] = { 0 };
 
-char vidText[5] = "FFF1";
-char pidText[5] = "FA2F";
+char vidText[5] = "FFFF";
+char pidText[5] = "FA22";
 char interfaceText[5] = "0";
 char epOutText[3] = "02";
 char epInText[3] = "81";
 char writeSizeText[32] = "64";
 char readSizeText[32] = "64";
-char sendText[DATA_INPUT_BUFF_MAX_SIZE] = "Ingchips 123";
+char sendText[DATA_INPUT_BUFF_MAX_SIZE] = "0x3F30313233";
 char recvText[DATA_INPUT_BUFF_MAX_SIZE] = "";
 
 static void USB_SendData(uint16_t vid, uint16_t pid, int interfaceIndex, int ep, uint8_t* data, size_t size)
@@ -81,7 +81,7 @@ static void USB_SendData(uint16_t vid, uint16_t pid, int interfaceIndex, int ep,
 
 	logger->AddLog("[info] %s\n", (std::stringstream() << "libusb_bulk_transfer(0x" << std::hex << (int)ep << std::dec << ") write size:[" << nActualBytes << "]").str().c_str());
 
-	unsigned char hexbuf[513] = { 0 };
+	unsigned char hexbuf[DATA_INPUT_BUFF_MAX_SIZE * 2] = { 0 };
 	utils::Hex2String(data, hexbuf, size);
 	logger->AddLog("[info] %s\n", hexbuf);
 
@@ -130,7 +130,7 @@ static int USB_RecvData(uint16_t vid, uint16_t pid, int interfaceIndex, int ep, 
 
 	// 从指定端点接收数据
 	int nActualBytes = 0;
-	nRet = libusb_bulk_transfer(pHandle, ep, (unsigned char*)data, size, &nActualBytes, 1000);
+	nRet = libusb_bulk_transfer(pHandle, ep, (unsigned char*)data, size, &nActualBytes, 10000);
 	if (nRet < 0)
 	{
 		libusb_release_interface(pHandle, interfaceIndex);
@@ -181,6 +181,9 @@ void ShowUSBSendWindow(bool* p_open)
 	ImGuiDCXAxisAlign(320); ImGui::InputTextEx("##WRITE SIZE", NULL, writeSizeText, sizeof(writeSizeText), ImVec2(100.0f, 0.0f), ImGuiInputTextFlags_CharsDecimal);
 	ImGui::SameLine();
 	btnSend = ImGui::Button("Write");
+	ImGui::SameLine();
+	static bool autoRecv = true;
+	ImGui::Checkbox("Auto Recv", &autoRecv);
 
 	ImGui::Text("EP IN");
 	ImGui::SameLine();
@@ -210,7 +213,7 @@ void ShowUSBSendWindow(bool* p_open)
 	utils::ValidateIntText(writeSizeText, write_size);
 	utils::ValidateIntText(readSizeText, read_size);
 	utils::ValidateDataText(sendText, sendData, data_size);
-
+	
 	if (btnSend)
 	{
 		try
@@ -223,7 +226,7 @@ void ShowUSBSendWindow(bool* p_open)
 		}
 		memset(sendData, 0, DATA_INPUT_BUFF_MAX_SIZE);
 	}
-	if (btnRecv)
+	if (btnRecv || (btnSend && autoRecv))
 	{
 		memset(recvData, 0, DATA_INPUT_BUFF_MAX_SIZE);
 		try
