@@ -53,7 +53,7 @@ void Loadini(std::filesystem::path ini_path)
 	strcpy(c.hard_version,	  reader.Get("option", "hard_version", "V0.0.0").c_str());
 	strcpy(c.soft_version,	  reader.Get("option", "soft_version", "V0.0.0").c_str());
 
-	c.block_num				= reader.GetInteger("option", "block_size", 64);
+	c.block_size			= reader.GetInteger("option", "block_size", 64);
 	c.check_type			= reader.GetInteger("option", "check_type", CHECK_TYPE_CRC);
 	c.upgrade_type			= reader.GetInteger("option", "upgrade_type", UPGRADE_TYPE_APP_ONLY);
 	c.encryption_enable		= reader.GetBoolean("option", "encryption_enable", true);
