@@ -375,7 +375,33 @@ uint16_t utils::crc16_modbus(uint8_t* data, uint16_t length)
 				crc = (crc >> 1);
 		}
 	}
-	return crc;
+	return (crc << 8) | (crc >> 8);
+}
+
+uint16_t utils::crc16_x25(uint8_t* data, uint16_t length)
+{
+	uint8_t i;
+	uint16_t crc = 0xffff;        // Initial value
+	while (length--)
+	{
+		crc ^= *data++;            // crc ^= *data; data++;
+		for (i = 0; i < 8; ++i)
+		{
+			if (crc & 1)
+				crc = (crc >> 1) ^ 0x8408;        // 0x8408 = reverse 0x1021
+			else
+				crc = (crc >> 1);
+		}
+	}
+	return ~crc;                // crc^Xorout
+}
+
+uint8_t utils::bcc(uint8_t* data, uint16_t length)
+{
+	uint8_t bcc = 0;
+	while (length--)
+		bcc ^= *data++;
+	return bcc;
 }
 
 uint16_t utils::sum_16(uint8_t* p1, uint32_t len)

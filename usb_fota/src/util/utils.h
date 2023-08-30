@@ -45,7 +45,9 @@ namespace utils {
 	long long get_current_system_time_ms();
 	long long get_current_system_time_s();
 
+	uint16_t crc16_x25(uint8_t* data, uint16_t length);
 	uint16_t crc16_modbus(uint8_t* data, uint16_t length);
+	uint8_t bcc(uint8_t* data, uint16_t length);
 	uint16_t sum_16(uint8_t* p1, uint32_t len);
 
 	void xor_encrypt(const uint8_t* xor_vector, const uint8_t* data, size_t size, uint8_t* outData);
