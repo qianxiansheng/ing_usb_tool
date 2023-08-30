@@ -436,7 +436,7 @@ uint16_t crc16_modbus2(uint8_t* data, uint16_t length)
 #include <algorithm>
 #include <fstream>
 
-int main(int argc, char* argv[])
+int main5(int argc, char* argv[])
 {
 	uint8_t data[] = { 
 		0x11, 0x22, 0x33, 0x44, 0x44, 0x44, 0x44, 0x45, 
@@ -526,4 +526,212 @@ int main4()
 	std::cout << "Over" << std::endl;
 
 	return 0;
+}
+
+
+#include <stdio.h>
+#include <libusb-1.0/libusb.h>
+
+static void print_devs(libusb_device** devs)
+{
+	libusb_device* dev;
+	int i = 0;
+
+	while ((dev = devs[i++]) != NULL) {
+		struct libusb_device_descriptor desc;
+		int r = libusb_get_device_descriptor(dev, &desc);
+		if (r < 0) {
+			fprintf(stderr, "failed to get device descriptor");
+			return;
+		}
+
+		printf("%04x:%04x (bus %d, device %d)\n",
+			desc.idVendor, desc.idProduct,
+			libusb_get_bus_number(dev), libusb_get_device_address(dev));
+	}
+}
+
+void send_cb(struct libusb_transfer* transfer)
+{
+	printf("Send Completed!\n");
+}
+
+int main8()
+{
+	int r;
+	ssize_t cnt;
+	libusb_device_handle* dev_handle;             //a device handle
+	libusb_device** devs;                         //devices
+	//libusb_context **ctx=NULL;	
+	r = libusb_init(NULL);                          //init 初始化libusb
+	if (r < 0) {
+		printf("failed to init libusb\n");
+		return 1;
+	}
+	cnt = libusb_get_device_list(NULL, &devs);      //获取设备列表
+	if (cnt < 0) {
+		printf("failed to get device list\n");
+		return 1;
+	}
+	//print_devs(devs);
+	dev_handle = libusb_open_device_with_vid_pid(NULL, 0xFFFF, 0xFA2F);
+	if (dev_handle == NULL) {
+		printf("Cannot open device\n");
+		return 1;
+	}
+	else
+		printf("Device Opened\n");
+
+	libusb_free_device_list(devs, 1);             //free the list, unref the devices in it
+
+	if (libusb_kernel_driver_active(dev_handle, 0) == 1) { //find out if kernel driver is attached
+		printf("Kernel Driver Active\n");
+		if (libusb_detach_kernel_driver(dev_handle, 0) == 0) //detach it
+			printf("Kernel Driver Detached!\n");
+	}
+	r = libusb_claim_interface(dev_handle, 0);         //claim interface 0 (the first) of device (mine had jsut 1)
+	if (r < 0) {
+		printf("Cannot Claim Interface\n");
+		return 1;
+	}
+	printf("Claimed Interface\n");
+
+
+	uint8_t sendBuf[64] = {0x12, 0x34, 0x56, 0x78};
+	libusb_transfer* transfer = libusb_alloc_transfer(0);
+
+	libusb_fill_interrupt_transfer(transfer, dev_handle, 2, sendBuf, 64, send_cb, NULL, 1000);
+	r = libusb_submit_transfer(transfer);
+	if (r == 0)
+	{
+		printf("send submit ok\n");
+		libusb_free_transfer(transfer);
+	}
+	else
+	{
+		printf("error %s\n", libusb_strerror(r));
+
+		libusb_free_transfer(transfer);
+	}
+
+
+	r = libusb_release_interface(dev_handle, 0); //release the claimed interface
+	if (r != 0) {
+		printf("Cannot Release Interface\n");
+		return 1;
+	}
+	printf("Released Interface\n");
+
+	libusb_close(dev_handle);                    //close the device we opened
+	libusb_exit(NULL);                            //needs to be called to end the
+
+}
+
+int main7()
+{
+	int r;
+	ssize_t cnt;
+	libusb_device_handle* dev_handle;             //a device handle
+	libusb_device** devs;                         //devices
+	//libusb_context **ctx=NULL;	
+	r = libusb_init(NULL);                          //init 初始化libusb
+	if (r < 0) {
+		printf("failed to init libusb\n");
+		return 1;
+	}
+	cnt = libusb_get_device_list(NULL, &devs);      //获取设备列表
+	if (cnt < 0) {
+		printf("failed to get device list\n");
+		return 1;
+	}
+	//print_devs(devs);
+	dev_handle = libusb_open_device_with_vid_pid(NULL, 0xFFFF, 0xFA2F);
+	if (dev_handle == NULL) {
+		printf("Cannot open device\n");
+		return 1;
+	}
+	else
+		printf("Device Opened\n");
+
+	libusb_free_device_list(devs, 1);             //free the list, unref the devices in it
+
+	if (libusb_kernel_driver_active(dev_handle, 0) == 1) { //find out if kernel driver is attached
+		printf("Kernel Driver Active\n");
+		if (libusb_detach_kernel_driver(dev_handle, 0) == 0) //detach it
+			printf("Kernel Driver Detached!\n");
+	}
+	r = libusb_claim_interface(dev_handle, 0);         //claim interface 0 (the first) of device (mine had jsut 1)
+	if (r < 0) {
+		printf("Cannot Claim Interface\n");
+		return 1;
+	}
+	printf("Claimed Interface\n");
+	Sleep(1);
+	unsigned char data[2];
+	union f_to_char {
+		char chr[4];
+		float ft0;
+	}temp_union;
+	unsigned char tmp_char[64];
+	data[0] = 0x02; data[1] = 0x64;
+	int actual; //used to find out how many bytes were written
+	while (1) {
+		r = libusb_interrupt_transfer(dev_handle, (0x02 | LIBUSB_ENDPOINT_OUT), data, 2, &actual, 0); //my device's out endpoint was 1, found with trial- the device had 2 endpoints: 2 and 129
+		if (r == 0 && actual == 2) //we wrote the 2 bytes successfully
+			printf("Writing Successful\n");
+		else
+			printf("Write Error %s\n", libusb_strerror(r));
+
+		r = libusb_interrupt_transfer(dev_handle, (0x01 | LIBUSB_ENDPOINT_IN), tmp_char, 8, &actual, 1000);//pay attion
+
+		if (r == 0 && actual == 9) //we read the 64 bytes successfully
+			printf("Read Successful\n");
+		else
+			printf("Read Error\n");
+		//printf("%i,%i\n",r,actual);
+		temp_union.chr[0] = tmp_char[5];
+		temp_union.chr[1] = tmp_char[6];
+		temp_union.chr[2] = tmp_char[7];
+		temp_union.chr[3] = tmp_char[8];
+		printf("The volt is %f mV\n", temp_union.ft0);
+		Sleep(500);
+		printf("%s", "\033[1H\033[2J");//clear display
+
+	}
+
+	r = libusb_release_interface(dev_handle, 0); //release the claimed interface
+	if (r != 0) {
+		printf("Cannot Release Interface\n");
+		return 1;
+	}
+	printf("Released Interface\n");
+
+	libusb_close(dev_handle);                    //close the device we opened
+	libusb_exit(NULL);                            //needs to be called to end the
+
+	return 0;
+}
+
+union {
+	uint16_t s;
+	uint8_t c[sizeof(uint16_t)];
+}un;
+
+int main()
+{
+	uint8_t data[] = { 0x11, 0x22, 0x33, 0x44, 0x44, 0x44, 0x44, 0x45, 0x44, 0x44, 0x45, 0x63, 0x46, 0x34, 0x56, 0x34, 0x3D, 0xDD, 0xDE, 0xDD, 0xEC, 0xF4, 0x00, 0x22, 0x22, 0x22, 0x22, 0x22, 0x22, 0x22, 0x22, 0x22 };
+
+	uint16_t r = crc16_modbus(data, sizeof(data));
+
+	uint8_t lsb = r;
+	uint8_t msb = r >> 8;
+
+	printf("%02X %02X\n", lsb, msb);
+
+	uint16_t c = 0x8572;
+	uint8_t* pc = (uint8_t*)&c;
+	printf("%02X %02X\n", pc[0], pc[1]);
+
+	un.s = 0x8572;
+	printf("%02X %02X\n", un.c[0], un.c[1]);
 }
