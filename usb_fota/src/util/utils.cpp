@@ -91,6 +91,14 @@ void utils::readFileData(std::filesystem::path path, void* out_data)
 	inFile.close();
 }
 
+std::vector<uint8_t> utils::readFileData(std::filesystem::path& path)
+{
+	uint32_t size = std::filesystem::file_size(path);
+	std::vector<uint8_t> file(size);
+	readFileData(path, file.data());
+	return file;
+}
+
 std::string utils::readFileText(std::filesystem::path path)
 {
 	std::ifstream inFile;

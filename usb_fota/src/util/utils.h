@@ -14,6 +14,7 @@ namespace utils {
 
 
 	void readFileData(std::filesystem::path path, void* out_data);
+	std::vector<uint8_t> readFileData(std::filesystem::path& path);
 	std::string readFileText(std::filesystem::path path);
 
 	uint8_t htoi_4(const char c);

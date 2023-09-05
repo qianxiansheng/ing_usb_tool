@@ -65,6 +65,7 @@
 
 #define IAP_PACK_ERROR "PACK ERROR"
 
+#define IAP_GEN_EXE_SUFFIX 0x5F2C6AAC
 
 typedef enum
 {
