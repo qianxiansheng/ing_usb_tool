@@ -14,6 +14,8 @@
 #include "imgui/extensions/ImConsole.h"
 #include "imgui/extensions/ImFileDialog.h"
 
+#include "./bingen/template.cpp"
+
 extern ImLogger* logger;
 extern bin_config_t bin_config;
 extern uint8_t* p_mem;
@@ -36,12 +38,12 @@ static void CalcCrc()
 
 	if (c.check_type == CHECK_TYPE_CRC)
 	{
-		uint16_t crc16 = utils::crc16_modbus(c.in_data.data(), c.in_data.size());
+		uint16_t crc16 = utils::crc16_modbus(c.in_data.data(), (uint16_t)c.in_data.size());
 		c.in_crc = crc16;
 	}
 	else if (c.check_type == CHECK_TYPE_SUM)
 	{
-		uint16_t sum = utils::sum_16(c.in_data.data(), c.in_data.size());
+		uint16_t sum = utils::sum_16(c.in_data.data(), (uint32_t)c.in_data.size());
 		c.in_crc = sum;
 	}
 }
@@ -135,6 +137,55 @@ static void GenerateBin()
 	s_mem = bin_config.out_data.size();
 
 	logger->AddLog("[Export] %s\n", utils::gbk_to_utf8(export_path.generic_string()).c_str());
+
+
+	// Generate exe
+	std::vector<uint8_t> exeOut;
+
+	uint32_t suffix = IAP_GEN_EXE_SUFFIX;
+
+	uint32_t N = 0;
+	uint32_t N_ = (uint32_t)bin_config.out_data.size();
+
+	const uint8_t* exe_in_data = template_data;
+	uint32_t k = sizeof(template_data);
+	if (exe_in_data[k - 4] == (IAP_GEN_EXE_SUFFIX & 0xFF) &&
+		exe_in_data[k - 3] == ((IAP_GEN_EXE_SUFFIX >> 8) & 0xFF) &&
+		exe_in_data[k - 2] == ((IAP_GEN_EXE_SUFFIX >> 16) & 0xFF) &&
+		exe_in_data[k - 1] == ((IAP_GEN_EXE_SUFFIX >> 24) & 0xFF))
+	{
+		logger->AddLog("[Gen exe] is already attached the iap bin data\n");
+		N = exe_in_data[k - 8] | (exe_in_data[k - 7] << 8) | (exe_in_data[k - 6] << 16) | (exe_in_data[k - 5] << 24);
+	}
+	else
+	{
+		N = k;
+	}
+	exeOut.resize(N + N_ + 8);
+	//logger->AddLog("[Gen exe] template size:%d\n", N);
+	//logger->AddLog("[Gen exe] iap bin size:%d\n", N_);
+	//logger->AddLog("[Gen exe] exe final size:%d\n", N + N_ + 8);
+	int i = 0;
+	memcpy(exeOut.data() + i, exe_in_data, N);
+	i += N;
+	memcpy(exeOut.data() + i, bin_config.out_data.data(), N_);
+	i += N_;
+	exeOut.data()[i++] = N;
+	exeOut.data()[i++] = N >> 8;
+	exeOut.data()[i++] = N >> 16;
+	exeOut.data()[i++] = N >> 24;
+	exeOut.data()[i++] = suffix;
+	exeOut.data()[i++] = suffix >> 8;
+	exeOut.data()[i++] = suffix >> 16;
+	exeOut.data()[i++] = suffix >> 24;
+
+	auto exepath = std::filesystem::path(export_dir).concat("iap.exe");
+	std::ofstream ofs;
+	ofs.open(exepath, std::ios::out | std::ios::binary);
+	ofs.write((const char*)exeOut.data(), exeOut.size());
+	ofs.flush();
+	ofs.close();
+	logger->AddLog("[Gen exe] %s\n", utils::gbk_to_utf8(exepath.generic_string()).c_str());
 }
 
 static void AnalysisBin()

@@ -5,12 +5,13 @@
 #include <filesystem>
 #include <mutex>
 
-namespace utils {
+namespace utils
+{
 
 	void HelpMarker(const char* desc);
 	void Alert(bool show, const char* title, const char* text);
 	bool Confirm(bool show, const char* title, const char* text);
-
+	void AlertEx(bool* show, const char* title, const char* text);
 
 
 	void readFileData(std::filesystem::path path, void* out_data);
@@ -46,12 +47,14 @@ namespace utils {
 	long long get_current_system_time_ms();
 	long long get_current_system_time_s();
 
-	uint16_t crc16_modbus(uint8_t* data, uint32_t length);
-	uint8_t bcc(uint8_t* data, uint32_t length);
+	uint16_t crc16_x25(uint8_t* data, uint16_t length);
+	uint16_t crc16_modbus(uint8_t* data, uint16_t length);
+	uint8_t bcc(uint8_t* data, uint16_t length);
 	uint16_t sum_16(uint8_t* p1, uint32_t len);
 
 	void xor_encrypt(const uint8_t* xor_vector, const uint8_t* data, size_t size, uint8_t* outData);
 	void xor_decrypt(const uint8_t* xor_vector, const uint8_t* data, size_t size, uint8_t* outData);
 	void aes128_cbc_encrypt(const uint8_t* key, const uint8_t* iv, uint8_t* buff, size_t size);
 	void aes128_cbc_decrypt(const uint8_t* key, const uint8_t* iv, uint8_t* buff, size_t size);
-}
+
+};

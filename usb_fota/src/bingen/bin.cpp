@@ -53,7 +53,7 @@ void Loadini(std::filesystem::path ini_path)
 	strcpy(c.hard_version,	  reader.Get("option", "hard_version", "V0.0.0").c_str());
 	strcpy(c.soft_version,	  reader.Get("option", "soft_version", "V0.0.0").c_str());
 
-	c.block_size			= reader.GetInteger("option", "block_size", 64);
+	c.block_size			= (uint16_t)reader.GetInteger("option", "block_size", 64);
 	c.check_type			= reader.GetInteger("option", "check_type", CHECK_TYPE_CRC);
 	c.upgrade_type			= reader.GetInteger("option", "upgrade_type", UPGRADE_TYPE_APP_ONLY);
 	c.encryption_enable		= reader.GetBoolean("option", "encryption_enable", true);
@@ -77,9 +77,9 @@ void Exportbin(std::filesystem::path export_bin_path)
 		return;
 
 	memcpy(header + i, c.identify, 8);				i += 8;
-	header[i] = strlen(c.chip_code);				i += 1;
+	header[i] = (uint8_t)strlen(c.chip_code);		i += 1;
 	memcpy(header + i, c.chip_code, header[i - 1]);	i += 15;
-	header[i] = strlen(c.proj_code);				i += 1;
+	header[i] = (uint8_t)strlen(c.proj_code);		i += 1;
 	memcpy(header + i, c.proj_code, header[i - 1]); i += 23;
 	memcpy(header + i, c.hard_version, 6);			i += 6;
 	memcpy(header + i, c.soft_version, 6);			i += 6;
@@ -87,23 +87,23 @@ void Exportbin(std::filesystem::path export_bin_path)
 	header[i] = c.check_type;
 	if (c.check_type == CHECK_TYPE_CRC)
 	{
-		uint16_t crc16 = utils::crc16_modbus(bin_config.in_data.data(), bin_config.in_data.size());
+		uint16_t crc16 = utils::crc16_modbus(bin_config.in_data.data(), (uint32_t)bin_config.in_data.size());
 		header[i + 1] = 2;
-		header[i + 2] = crc16;
+		header[i + 2] = crc16 & 0xFF;
 		header[i + 3] = crc16 >> 8;
 	}
 	else if (c.check_type == CHECK_TYPE_SUM)
 	{
-		uint16_t sum = utils::sum_16(bin_config.in_data.data(), bin_config.in_data.size());
+		uint16_t sum = utils::sum_16(bin_config.in_data.data(), (uint32_t)bin_config.in_data.size());
 		header[i + 1] = 2;
-		header[i + 2] = sum;
+		header[i + 2] = sum & 0xFF;
 		header[i + 3] = sum >> 8;
 	}
 	i += 6;
 	//==============================================================
-	header[i++] = c.block_size;
+	header[i++] = c.block_size & 0xFF;
 	header[i++] = c.block_size >> 8;
-	header[i++] = c.block_num;
+	header[i++] = c.block_num & 0xFF;
 	header[i++] = c.block_num >> 8;
 	//==============================================================
 	header[i++] = c.upgrade_type;
@@ -231,7 +231,7 @@ void Alsbin(std::filesystem::path bin_path)
 	uint8_t* check_value = header + 62;
 	if (check_type == CHECK_TYPE_CRC) 
 	{
-		uint16_t crc = utils::crc16_modbus(decrypted_bin.data(), decrypted_bin.size());
+		uint16_t crc = utils::crc16_modbus(decrypted_bin.data(), (uint32_t)decrypted_bin.size());
 		logger->AddLog("[CRC] %04X\n", crc);
 		//crc = (crc >> 8) | (crc << 8);
 		if (memcmp(&crc, check_value, check_len) == 0)
@@ -241,7 +241,7 @@ void Alsbin(std::filesystem::path bin_path)
 	}
 	else if (check_type == CHECK_TYPE_SUM)
 	{
-		uint16_t sum = utils::sum_16(decrypted_bin.data(), decrypted_bin.size());
+		uint16_t sum = utils::sum_16(decrypted_bin.data(), (uint32_t)decrypted_bin.size());
 		logger->AddLog("[Check SUM] %04X\n", sum);
 		//sum = (sum >> 8) | (sum << 8);
 		if (memcmp(&sum, check_value, check_len) == 0)

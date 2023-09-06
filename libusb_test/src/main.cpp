@@ -173,7 +173,7 @@ std::vector<uint8_t> readFileData(std::filesystem::path& path)
 
 int main()
 {
-	std::filesystem::path filename("D:\\myResource\\work\\c++\\ing_usb_fota\\bin\\x64\\Debug\\iap_template.exe");
+	std::filesystem::path filename("D:\\myResource\\work\\c++\\ing_usb_fota\\bin\\x64\\Release\\iap_template.exe");
 
 	std::vector<uint8_t> data = readFileData(filename);
 

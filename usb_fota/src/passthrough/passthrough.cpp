@@ -70,7 +70,7 @@ static void USB_SendData(uint16_t vid, uint16_t pid, int interfaceIndex, int ep,
 
 	// 向指定端点发送数据
 	int nActualBytes = 0;
-	nRet = libusb_bulk_transfer(pHandle, ep, (unsigned char*)data, size, &nActualBytes, 1000);
+	nRet = libusb_bulk_transfer(pHandle, ep, (unsigned char*)data, (int)size, &nActualBytes, 1000);
 	if (nRet < 0)
 	{
 		libusb_release_interface(pHandle, interfaceIndex);
@@ -82,7 +82,7 @@ static void USB_SendData(uint16_t vid, uint16_t pid, int interfaceIndex, int ep,
 	logger->AddLog("[info] %s\n", (std::stringstream() << "libusb_bulk_transfer(0x" << std::hex << (int)ep << std::dec << ") write size:[" << nActualBytes << "]").str().c_str());
 
 	unsigned char hexbuf[DATA_INPUT_BUFF_MAX_SIZE * 2] = { 0 };
-	utils::Hex2String(data, hexbuf, size);
+	utils::Hex2String(data, hexbuf, (int)size);
 	logger->AddLog("[info] %s\n", hexbuf);
 
 	// 释放第n个接口
@@ -130,7 +130,7 @@ static int USB_RecvData(uint16_t vid, uint16_t pid, int interfaceIndex, int ep, 
 
 	// 从指定端点接收数据
 	int nActualBytes = 0;
-	nRet = libusb_bulk_transfer(pHandle, ep, (unsigned char*)data, size, &nActualBytes, 10000);
+	nRet = libusb_bulk_transfer(pHandle, ep, (unsigned char*)data, (int)size, &nActualBytes, 10000);
 	if (nRet < 0)
 	{
 		libusb_release_interface(pHandle, interfaceIndex);

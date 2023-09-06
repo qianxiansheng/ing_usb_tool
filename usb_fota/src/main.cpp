@@ -26,7 +26,6 @@
 #include "bingen/bingen.h"
 #include "bingen/memedit.h"
 #include "ingiap/ingiap.h"
-#include "passthrough/hidtool.h"
 
 #include "imgui/extensions/ImFileDialog.h"
 
@@ -39,10 +38,9 @@ static bool opt_showdemowindow = false;
 static bool opt_showlogwindow = true;
 static bool opt_showusbdevicetreewindow = false;
 static bool opt_showusbsendwindow = false;
-static bool opt_showbingenwindow = false;
-static bool opt_showbinviewerwindow = false;
-static bool opt_showiapwindow = true;
-static bool opt_showhidtoolwindow = false;
+static bool opt_showbingenwindow = true;
+static bool opt_showbinviewerwindow = true;
+static bool opt_showiapwindow = false;
 
 ImVec4 clear_color = ImVec4(0.35f, 0.35f, 0.35f, 1.00f);
 
@@ -169,7 +167,6 @@ static void ShowRootWindowMenu()
 			ImGui::MenuItem("USB Device tree", NULL, &opt_showusbdevicetreewindow);
 			ImGui::MenuItem("Bin Editor", NULL, &opt_showbingenwindow);
 			ImGui::MenuItem("USB Send", NULL, &opt_showusbsendwindow);
-			ImGui::MenuItem("HID Tool", NULL, &opt_showhidtoolwindow);
 			ImGui::Separator();
 			ImGui::MenuItem("IAP", NULL, &opt_showiapwindow);
 
@@ -237,9 +234,6 @@ static void ShowRootWindow(bool* p_open)
 		ShowIAPWindow(&opt_showiapwindow);
 	}
 
-	if (opt_showhidtoolwindow) {
-		ShowHIDToolWindow(&opt_showhidtoolwindow);
-	}
 }
 
 static int main_gui()

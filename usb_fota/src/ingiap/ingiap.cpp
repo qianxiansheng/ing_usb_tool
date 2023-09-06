@@ -276,7 +276,7 @@ void iap_transfer(uint8_t* data, uint32_t size, uint16_t packIdxReverse, bool is
 	buf[0] = IAP_PRO_TRANSFER_HEADER;
 	buf[1] = IAP_TRANSFER_DIRECT_DOWN | IAP_TRANSFER_PACK_TYPE_DATA;
 	uint16_t pack_ctrl = (isFirst << 15) | (packIdxReverse & 0x7FFF);
-	buf[2] = pack_ctrl;
+	buf[2] = pack_ctrl & 0xFF;
 	buf[3] = pack_ctrl >> 8;
 	buf[4] = size;
 	buf[5] = size >> 8;
@@ -389,11 +389,11 @@ int iap_get_flash_read_ack()
 	{
 		return iap_business_read(businessAckBuf, sizeof(businessAckBuf));
 	}
-	catch (transfer_pack_exception& e)
+	catch (::transfer_pack_exception)
 	{
 		logger->AddLog("[ACK] transfer pack exception\n");
 	}
-	catch (business_pack_exception& e)
+	catch (::business_pack_exception)
 	{
 		logger->AddLog("[ACK] business pack exception\n");
 	}
@@ -408,11 +408,11 @@ int iap_get_ack()
 
 		return businessAckBuf[1];
 	}
-	catch (transfer_pack_exception& e)
+	catch (::transfer_pack_exception)
 	{
 		logger->AddLog("[ACK] transfer pack exception\n");
 	}
-	catch (business_pack_exception& e)
+	catch (::business_pack_exception)
 	{
 		logger->AddLog("[ACK] business pack exception\n");
 	}
@@ -500,7 +500,7 @@ void iap_start_upgrade()
 	memcpy(buf + i, iap_bin_data.data(), IAP_HEADER_SIZE);		// DATA
 	i += IAP_HEADER_SIZE;
 	uint16_t crc = utils::crc16_modbus(buf, i);
-	buf[i++] = crc;										// CRC
+	buf[i++] = crc & 0xFF;										// CRC
 	buf[i++] = crc >> 8;
 
 	iap_send_business_ack(buf, i);
@@ -530,7 +530,7 @@ void iap_flash_write()
 		uint16_t currentSize = (wBlockIdx == wBlockNum - 1) ? wBlockLast : wBlockSize;
 		uint16_t length = currentSize + 6;
 		uint32_t offset = wBlockIdx * wBlockSize;
-		buf[i++] = length;
+		buf[i++] = length & 0xFF;
 		buf[i++] = length >> 8;
 		if (wBlockIdx == wBlockNum - 1)
 		{
@@ -549,7 +549,7 @@ void iap_flash_write()
 		memcpy(buf + i, binData + (wBlockIdx * wBlockSize), currentSize);		// DATA
 		i += currentSize;
 		uint16_t crc = utils::crc16_modbus(buf, i);
-		buf[i++] = crc;
+		buf[i++] = crc & 0xFF;
 		buf[i++] = crc >> 8;
 
 		if (iap_status == IAP_STATUS_TERMINATE) return;
@@ -568,10 +568,10 @@ void iap_reboot()
 	buf[i++] = IAP_CMD_REBOOT;									// CMD
 	buf[i++] = 2;												// LENGTH
 	buf[i++] = 0;
-	buf[i++] = iap_delay;
+	buf[i++] = iap_delay & 0xFF;
 	buf[i++] = iap_delay >> 8;
 	uint16_t crc = utils::crc16_modbus(buf, i);
-	buf[i++] = crc;												// CRC
+	buf[i++] = crc & 0xFF;												// CRC
 	buf[i++] = crc >> 8;
 	iap_send_business_ack(buf, i);
 }
@@ -585,10 +585,10 @@ void iap_switch_app()
 	buf[i++] = IAP_CMD_SWITCH_APP;						// CMD
 	buf[i++] = 2;										// LENGTH
 	buf[i++] = 0;
-	buf[i++] = iap_delay;
+	buf[i++] = iap_delay & 0xFF;
 	buf[i++] = iap_delay >> 8;
 	uint16_t crc = utils::crc16_modbus(buf, i);
-	buf[i++] = crc;										// CRC
+	buf[i++] = crc & 0xFF;								// CRC
 	buf[i++] = crc >> 8;
 	iap_send_business_ack(buf, i);
 }

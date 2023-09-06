@@ -93,9 +93,6 @@
     <ClCompile Include="src\ingiap\ingiap.cpp">
       <Filter>src\ingiap</Filter>
     </ClCompile>
-    <ClCompile Include="src\passthrough\hidtool.cpp">
-      <Filter>src\passthrough</Filter>
-    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\pch.h">
