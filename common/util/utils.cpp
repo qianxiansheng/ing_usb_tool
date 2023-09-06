@@ -49,6 +49,27 @@ void utils::Alert(bool show, const char* title, const char* text)
 	}
 }
 
+void utils::AlertEx(bool* show, const char* title, const char* text)
+{
+	if (*show)
+		ImGui::OpenPopup(title);
+
+	// Always center this window when appearing
+	ImVec2 center = ImGui::GetMainViewport()->GetCenter();
+	ImGui::SetNextWindowPos(center, ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
+
+	if (ImGui::BeginPopupModal(title, NULL, ImGuiWindowFlags_AlwaysAutoResize))
+	{
+		ImGui::Text(text);
+		ImGui::Separator();
+
+		if (ImGui::Button("OK", ImVec2(120, 0))) { ImGui::CloseCurrentPopup(); *show = false; }
+		ImGui::SetItemDefaultFocus();
+		ImGui::EndPopup();
+	}
+}
+
+
 bool utils::Confirm(bool show, const char* title, const char* text)
 {
 	if (show)
@@ -79,27 +100,6 @@ bool utils::Confirm(bool show, const char* title, const char* text)
 		ImGui::EndPopup();
 	}
 	return result;
-}
-
-
-void utils::AlertEx(bool* show, const char* title, const char* text)
-{
-	if (*show)
-		ImGui::OpenPopup(title);
-
-	// Always center this window when appearing
-	ImVec2 center = ImGui::GetMainViewport()->GetCenter();
-	ImGui::SetNextWindowPos(center, ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
-
-	if (ImGui::BeginPopupModal(title, NULL, ImGuiWindowFlags_AlwaysAutoResize))
-	{
-		ImGui::Text(text);
-		ImGui::Separator();
-
-		if (ImGui::Button("OK", ImVec2(120, 0))) { ImGui::CloseCurrentPopup(); *show = false; }
-		ImGui::SetItemDefaultFocus();
-		ImGui::EndPopup();
-	}
 }
 
 
@@ -271,9 +271,11 @@ std::string utils::dec2hex(uint32_t i)
 
 void utils::printf_hexdump(uint8_t* data, uint16_t size)
 {
+	std::cout << std::hex;
 	for (uint16_t i = 0; i < size; ++i) {
-		printf("%02X ", data[i]);
+		std::cout << (int)data[i];
 	}
+	std::cout << std::dec << std::endl;
 }
 
 unsigned char utils::Hex2String(const unsigned char* pSrc, unsigned char* dest, int nL)
@@ -386,7 +388,7 @@ long long utils::get_current_system_time_s()
 	return std::chrono::duration_cast<std::chrono::seconds>(duration_since_epoch).count();
 }
 
-uint16_t utils::crc16_modbus(uint8_t* data, uint16_t length)
+uint16_t utils::crc16_modbus(uint8_t* data, uint32_t length)
 {
 	uint8_t i;
 	uint16_t crc = 0xffff;        // Initial value
@@ -404,25 +406,7 @@ uint16_t utils::crc16_modbus(uint8_t* data, uint16_t length)
 	return (crc << 8) | (crc >> 8);
 }
 
-uint16_t utils::crc16_x25(uint8_t* data, uint16_t length)
-{
-	uint8_t i;
-	uint16_t crc = 0xffff;        // Initial value
-	while (length--)
-	{
-		crc ^= *data++;            // crc ^= *data; data++;
-		for (i = 0; i < 8; ++i)
-		{
-			if (crc & 1)
-				crc = (crc >> 1) ^ 0x8408;        // 0x8408 = reverse 0x1021
-			else
-				crc = (crc >> 1);
-		}
-	}
-	return ~crc;                // crc^Xorout
-}
-
-uint8_t utils::bcc(uint8_t* data, uint16_t length)
+uint8_t utils::bcc(uint8_t* data, uint32_t length)
 {
 	uint8_t bcc = 0;
 	while (length--)

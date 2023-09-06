@@ -93,7 +93,7 @@
       <PreprocessorDefinitions>_SILENCE_CXX17_CODECVT_HEADER_DEPRECATION_WARNING;_SILENCE_CXX17_RESULT_OF_DEPRECATION_WARNING;_CRT_SECURE_NO_WARNINGS;WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp17</LanguageStandard>
-      <AdditionalIncludeDirectories>$(ProjectDir)src;$(ProjectDir)src\imgui;$(ProjectDir)src\imgui\backends;$(ProjectDir)src\imgui\extensions;$(SolutionDir)dependence\glfw\include;$(SolutionDir)dependence\libusb\include;$(SolutionDir)dependence\hidapi-win\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)src;$(SolutionDir)common;$(SolutionDir)common\imgui;$(SolutionDir)common\imgui\backends;$(SolutionDir)common\imgui\extensions;$(SolutionDir)dependence\glfw\include;$(SolutionDir)dependence\libusb\include;$(SolutionDir)dependence\hidapi-win\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -111,7 +111,7 @@
       <PreprocessorDefinitions>_SILENCE_CXX17_CODECVT_HEADER_DEPRECATION_WARNING;_SILENCE_CXX17_RESULT_OF_DEPRECATION_WARNING;_CRT_SECURE_NO_WARNINGS;WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp17</LanguageStandard>
-      <AdditionalIncludeDirectories>$(ProjectDir)src;$(ProjectDir)src\imgui;$(ProjectDir)src\imgui\backends;$(ProjectDir)src\imgui\extensions;$(SolutionDir)dependence\glfw\include;$(SolutionDir)dependence\libusb\include;$(SolutionDir)dependence\hidapi-win\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)src;$(SolutionDir)common;$(SolutionDir)common\imgui;$(SolutionDir)common\imgui\backends;$(SolutionDir)common\imgui\extensions;$(SolutionDir)dependence\glfw\include;$(SolutionDir)dependence\libusb\include;$(SolutionDir)dependence\hidapi-win\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -129,7 +129,7 @@
       <PreprocessorDefinitions>_SILENCE_CXX17_CODECVT_HEADER_DEPRECATION_WARNING;_SILENCE_CXX17_RESULT_OF_DEPRECATION_WARNING;_CRT_SECURE_NO_WARNINGS;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp17</LanguageStandard>
-      <AdditionalIncludeDirectories>$(ProjectDir)src;$(ProjectDir)src\imgui;$(ProjectDir)src\imgui\backends;$(ProjectDir)src\imgui\extensions;$(SolutionDir)dependence\glfw\include;$(SolutionDir)dependence\libusb\include;$(SolutionDir)dependence\hidapi-win\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)src;$(SolutionDir)common;$(SolutionDir)common\imgui;$(SolutionDir)common\imgui\backends;$(SolutionDir)common\imgui\extensions;$(SolutionDir)dependence\glfw\include;$(SolutionDir)dependence\libusb\include;$(SolutionDir)dependence\hidapi-win\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -147,7 +147,7 @@
       <PreprocessorDefinitions>_SILENCE_CXX17_CODECVT_HEADER_DEPRECATION_WARNING;_SILENCE_CXX17_RESULT_OF_DEPRECATION_WARNING;_CRT_SECURE_NO_WARNINGS;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp17</LanguageStandard>
-      <AdditionalIncludeDirectories>$(ProjectDir)src;$(ProjectDir)src\imgui;$(ProjectDir)src\imgui\backends;$(ProjectDir)src\imgui\extensions;$(SolutionDir)dependence\glfw\include;$(SolutionDir)dependence\libusb\include;$(SolutionDir)dependence\hidapi-win\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)src;$(SolutionDir)common;$(SolutionDir)common\imgui;$(SolutionDir)common\imgui\backends;$(SolutionDir)common\imgui\extensions;$(SolutionDir)dependence\glfw\include;$(SolutionDir)dependence\libusb\include;$(SolutionDir)dependence\hidapi-win\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -159,22 +159,22 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="..\common\imgui\backends\imgui_impl_glfw.cpp" />
+    <ClCompile Include="..\common\imgui\backends\imgui_impl_opengl3.cpp" />
+    <ClCompile Include="..\common\imgui\backends\imgui_impl_win32.cpp" />
+    <ClCompile Include="..\common\imgui\imgui.cpp" />
+    <ClCompile Include="..\common\imgui\imgui_draw.cpp" />
+    <ClCompile Include="..\common\imgui\imgui_tables.cpp" />
+    <ClCompile Include="..\common\imgui\imgui_widgets.cpp" />
+    <ClCompile Include="..\common\util\aes.cpp" />
+    <ClCompile Include="..\common\util\ini.c" />
+    <ClCompile Include="..\common\util\INIReader.cpp" />
+    <ClCompile Include="..\common\util\myqueue.cpp" />
+    <ClCompile Include="..\common\util\utils.cpp" />
     <ClCompile Include="src\config.cpp" />
     <ClCompile Include="src\iap.cpp" />
-    <ClCompile Include="src\imgui\backends\imgui_impl_glfw.cpp" />
-    <ClCompile Include="src\imgui\backends\imgui_impl_opengl3.cpp" />
-    <ClCompile Include="src\imgui\backends\imgui_impl_win32.cpp" />
-    <ClCompile Include="src\imgui\imgui.cpp" />
-    <ClCompile Include="src\imgui\imgui_draw.cpp" />
-    <ClCompile Include="src\imgui\imgui_tables.cpp" />
-    <ClCompile Include="src\imgui\imgui_widgets.cpp" />
     <ClCompile Include="src\main.cpp" />
     <ClCompile Include="src\usb.cpp" />
-    <ClCompile Include="src\util\aes.cpp" />
-    <ClCompile Include="src\util\ini.c" />
-    <ClCompile Include="src\util\INIReader.cpp" />
-    <ClCompile Include="src\util\myqueue.cpp" />
-    <ClCompile Include="src\util\utils.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

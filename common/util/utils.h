@@ -10,6 +10,7 @@ namespace utils {
 	void HelpMarker(const char* desc);
 	void Alert(bool show, const char* title, const char* text);
 	bool Confirm(bool show, const char* title, const char* text);
+	void AlertEx(bool* show, const char* title, const char* text);
 
 
 

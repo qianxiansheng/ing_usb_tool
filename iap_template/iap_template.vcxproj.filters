@@ -19,42 +19,6 @@
     <ClCompile Include="src\main.cpp">
       <Filter>src</Filter>
     </ClCompile>
-    <ClCompile Include="src\util\utils.cpp">
-      <Filter>src\util</Filter>
-    </ClCompile>
-    <ClCompile Include="src\util\INIReader.cpp">
-      <Filter>src\util</Filter>
-    </ClCompile>
-    <ClCompile Include="src\util\ini.c">
-      <Filter>src\util</Filter>
-    </ClCompile>
-    <ClCompile Include="src\imgui\imgui_draw.cpp">
-      <Filter>src\imgui</Filter>
-    </ClCompile>
-    <ClCompile Include="src\imgui\imgui_tables.cpp">
-      <Filter>src\imgui</Filter>
-    </ClCompile>
-    <ClCompile Include="src\imgui\imgui_widgets.cpp">
-      <Filter>src\imgui</Filter>
-    </ClCompile>
-    <ClCompile Include="src\imgui\imgui.cpp">
-      <Filter>src\imgui</Filter>
-    </ClCompile>
-    <ClCompile Include="src\imgui\backends\imgui_impl_win32.cpp">
-      <Filter>src\imgui</Filter>
-    </ClCompile>
-    <ClCompile Include="src\imgui\backends\imgui_impl_glfw.cpp">
-      <Filter>src\imgui</Filter>
-    </ClCompile>
-    <ClCompile Include="src\imgui\backends\imgui_impl_opengl3.cpp">
-      <Filter>src\imgui</Filter>
-    </ClCompile>
-    <ClCompile Include="src\util\aes.cpp">
-      <Filter>src\util</Filter>
-    </ClCompile>
-    <ClCompile Include="src\util\myqueue.cpp">
-      <Filter>src\util</Filter>
-    </ClCompile>
     <ClCompile Include="src\config.cpp">
       <Filter>src</Filter>
     </ClCompile>
@@ -63,6 +27,42 @@
     </ClCompile>
     <ClCompile Include="src\iap.cpp">
       <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\common\util\myqueue.cpp">
+      <Filter>src\util</Filter>
+    </ClCompile>
+    <ClCompile Include="..\common\util\utils.cpp">
+      <Filter>src\util</Filter>
+    </ClCompile>
+    <ClCompile Include="..\common\util\aes.cpp">
+      <Filter>src\util</Filter>
+    </ClCompile>
+    <ClCompile Include="..\common\util\ini.c">
+      <Filter>src\util</Filter>
+    </ClCompile>
+    <ClCompile Include="..\common\util\INIReader.cpp">
+      <Filter>src\util</Filter>
+    </ClCompile>
+    <ClCompile Include="..\common\imgui\backends\imgui_impl_opengl3.cpp">
+      <Filter>src\imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="..\common\imgui\backends\imgui_impl_win32.cpp">
+      <Filter>src\imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="..\common\imgui\backends\imgui_impl_glfw.cpp">
+      <Filter>src\imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="..\common\imgui\imgui_draw.cpp">
+      <Filter>src\imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="..\common\imgui\imgui_tables.cpp">
+      <Filter>src\imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="..\common\imgui\imgui_widgets.cpp">
+      <Filter>src\imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="..\common\imgui\imgui.cpp">
+      <Filter>src\imgui</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

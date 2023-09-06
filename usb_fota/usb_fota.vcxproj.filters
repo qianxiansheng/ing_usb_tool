@@ -27,53 +27,11 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="src\imgui\imgui.cpp">
-      <Filter>src\imgui</Filter>
-    </ClCompile>
-    <ClCompile Include="src\imgui\imgui_demo.cpp">
-      <Filter>src\imgui</Filter>
-    </ClCompile>
-    <ClCompile Include="src\imgui\imgui_draw.cpp">
-      <Filter>src\imgui</Filter>
-    </ClCompile>
-    <ClCompile Include="src\imgui\imgui_tables.cpp">
-      <Filter>src\imgui</Filter>
-    </ClCompile>
-    <ClCompile Include="src\imgui\imgui_widgets.cpp">
-      <Filter>src\imgui</Filter>
-    </ClCompile>
-    <ClCompile Include="src\imgui\backends\imgui_impl_opengl3.cpp">
-      <Filter>src\imgui</Filter>
-    </ClCompile>
-    <ClCompile Include="src\imgui\backends\imgui_impl_win32.cpp">
-      <Filter>src\imgui</Filter>
-    </ClCompile>
-    <ClCompile Include="src\imgui\backends\imgui_impl_glfw.cpp">
-      <Filter>src\imgui</Filter>
-    </ClCompile>
     <ClCompile Include="src\main.cpp">
       <Filter>src</Filter>
     </ClCompile>
     <ClCompile Include="src\usb\usb_utils.cpp">
       <Filter>src\usb</Filter>
-    </ClCompile>
-    <ClCompile Include="src\util\INIReader.cpp">
-      <Filter>src\util</Filter>
-    </ClCompile>
-    <ClCompile Include="src\util\utils.cpp">
-      <Filter>src\util</Filter>
-    </ClCompile>
-    <ClCompile Include="src\imgui\extensions\ImConsole.cpp">
-      <Filter>src\imgui\extensions</Filter>
-    </ClCompile>
-    <ClCompile Include="src\imgui\extensions\ImFileDialog.cpp">
-      <Filter>src\imgui\extensions</Filter>
-    </ClCompile>
-    <ClCompile Include="src\util\aes.cpp">
-      <Filter>src\util</Filter>
-    </ClCompile>
-    <ClCompile Include="src\util\ini.c">
-      <Filter>src\util</Filter>
     </ClCompile>
     <ClCompile Include="src\passthrough\passthrough.cpp">
       <Filter>src\passthrough</Filter>
@@ -92,6 +50,48 @@
     </ClCompile>
     <ClCompile Include="src\ingiap\ingiap.cpp">
       <Filter>src\ingiap</Filter>
+    </ClCompile>
+    <ClCompile Include="..\common\util\utils.cpp">
+      <Filter>src\util</Filter>
+    </ClCompile>
+    <ClCompile Include="..\common\util\aes.cpp">
+      <Filter>src\util</Filter>
+    </ClCompile>
+    <ClCompile Include="..\common\util\ini.c">
+      <Filter>src\util</Filter>
+    </ClCompile>
+    <ClCompile Include="..\common\util\INIReader.cpp">
+      <Filter>src\util</Filter>
+    </ClCompile>
+    <ClCompile Include="..\common\imgui\imgui_draw.cpp">
+      <Filter>src\imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="..\common\imgui\imgui_tables.cpp">
+      <Filter>src\imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="..\common\imgui\imgui_widgets.cpp">
+      <Filter>src\imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="..\common\imgui\imgui.cpp">
+      <Filter>src\imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="..\common\imgui\imgui_demo.cpp">
+      <Filter>src\imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="..\common\imgui\backends\imgui_impl_win32.cpp">
+      <Filter>src\imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="..\common\imgui\backends\imgui_impl_glfw.cpp">
+      <Filter>src\imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="..\common\imgui\backends\imgui_impl_opengl3.cpp">
+      <Filter>src\imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="..\common\imgui\extensions\ImFileDialog.cpp">
+      <Filter>src\imgui\extensions</Filter>
+    </ClCompile>
+    <ClCompile Include="..\common\imgui\extensions\ImConsole.cpp">
+      <Filter>src\imgui\extensions</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
