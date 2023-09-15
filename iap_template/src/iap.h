@@ -20,6 +20,7 @@ enum IAPStatus
 	IAP_STATUS_SEND_START_CMD = 0x20,
 	IAP_STATUS_SEND_WRITE_FLASH,
 	IAP_STATUS_SEND_SWITCH_APP,
+	IAP_STATUS_SEND_SWITCH_BOOT,
 	IAP_STATUS_END,
 
 	IAP_STATUS_SUBSTATUS_WRITE_DATA = 0x40,
@@ -39,6 +40,8 @@ enum iap_cmd_e
 	IAP_CMD_FLASH_READ = 0xA2,
 	IAP_CMD_REBOOT = 0xA3,
 	IAP_CMD_SWITCH_APP = 0xA4,
+
+	IAP_CMD_SWITCH_BOOT = 0xC0,
 
 	IAP_CMD_ACK = 0xB0,
 };
@@ -120,4 +123,5 @@ void InitIAPContext(HIDDevice& dev, std::vector<uint8_t> iap_bin, uint16_t block
 
 void iap_run(IAPContext& ctx);
 
-void iap_handle_send_switch_app_cmd(IAPContext& ctx);
+void iap_run_switch_boot(IAPContext& ctx);
+

@@ -206,4 +206,72 @@ int main()
 
 	ofs.flush();
 	ofs.close();
+
+	return 0;
+}
+
+#include "hidapi.h"
+#include "util/utils.h"
+
+
+bool is_path_match_v_p_id(char* path, uint16_t vid, uint16_t pid)
+{
+	std::string p(path);
+	size_t iv = p.find("VID_");
+	size_t ip = p.find("PID_");
+
+	if (iv == std::numeric_limits<size_t>::max() || 
+		ip == std::numeric_limits<size_t>::max())
+		return false;
+
+	uint16_t tvid = utils::htoi_16(path + iv + 4);
+	uint16_t tpid = utils::htoi_16(path + ip + 4);
+
+	if (tvid == vid && tpid == pid)
+		return true;
+	else
+		return false;
+}
+
+void func(uint16_t vid, uint16_t pid)
+{
+	hid_device_info* hid_device_list = hid_enumerate(0, 0);
+	hid_device_info* p = hid_device_list;
+
+	while (p != NULL)
+	{
+		printf("%s\n", p->path);
+		if (is_path_match_v_p_id(p->path, vid, pid))
+		{
+			printf("YES\n");
+		}
+		p = p->next;
+	}
+
+	hid_free_enumeration(hid_device_list);
+}
+
+int main5()
+{
+	hid_init();
+	//func(0xFFFF, 0xFA28);
+
+	hid_device* dev = hid_open_path("\\\\?\\HID#VID_FFFF&PID_FA28&MI_02#8&2b7f0c0a&0&0000#{4d1e55b2-f16f-11cf-88cb-001111000030}");
+	uint8_t buf[] = {0x2F, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06};
+	hid_write(dev, buf, 6);
+
+	hid_exit();
+	return 0;
+}
+
+#include "icon.h"
+
+int main4()
+{
+	changedExeIcon(
+		L"C:\\Users\\leosh\\Desktop\\USB tool\\output\\iap.exe", 
+		L"C:\\Users\\leosh\\Pictures\\ico.ico"
+	);
+
+	return 0;
 }

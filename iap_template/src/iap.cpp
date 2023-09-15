@@ -32,6 +32,8 @@ void InitIAPContext(HIDDevice& dev, std::vector<uint8_t> iap_bin, uint16_t block
 
 	ctx->bin_size_limit = binSize;
 	ctx->bin_size_pos = 0;
+
+	hid_report_buf[0] = dev.reportId;
 }
 
 int hid_set_report(hid_device* dev, uint8_t* data, uint32_t size)
@@ -270,6 +272,21 @@ void iap_handle_send_switch_app_cmd(IAPContext& ctx)
 	iap_business(ctx.dev, buf, i);
 }
 
+void iap_handle_send_switch_boot_cmd(IAPContext& ctx)
+{
+	uint8_t buf[1 + 2 + 2 + 2] = { 0 };
+	uint16_t i = 0;
+	buf[i++] = IAP_CMD_SWITCH_BOOT;						// CMD
+	buf[i++] = 2;										// LENGTH
+	buf[i++] = 0;
+	buf[i++] = ctx.delay & 0xFF;
+	buf[i++] = ctx.delay >> 8;
+	uint16_t crc = utils::crc16_modbus(buf, i);
+	buf[i++] = crc & 0xFF;								// CRC
+	buf[i++] = crc >> 8;
+	iap_business(ctx.dev, buf, i);
+}
+
 void iap_handle_send_write_flash_cmd(IAPContext& ctx)
 {
 	uint16_t i = 0;
@@ -387,9 +404,76 @@ bool iap_handle(IAPContext& ctx)
 	return true;
 }
 
+bool iap_handle_switch_boot(IAPContext& ctx)
+{
+	printf("IAP status:%d %d %d\n", ctx.primary_status, ctx.process_status, ctx.in_out_status);
+	switch (ctx.primary_status)
+	{
+	case IAP_STATUS_READY:
+		ctx.primary_status = IAP_STATUS_RUNNING;
+		ctx.process_status = IAP_STATUS_SEND_SWITCH_BOOT;
+		break;
+	case IAP_STATUS_RUNNING:
+		switch (ctx.in_out_status)
+		{
+		case IAP_STATUS_SUBSTATUS_WRITE_DATA:
+			switch (ctx.process_status)
+			{
+			case IAP_STATUS_SEND_SWITCH_BOOT:
+				iap_handle_send_switch_boot_cmd(ctx);
+				break;
+			}
+			ctx.in_out_status = IAP_STATUS_SUBSTATUS_READ_ACK;
+			break;
+		case IAP_STATUS_SUBSTATUS_READ_ACK:
+			bool timeout = false;
+			try {
+				iap_business_read(ctx.dev, businessAckBuf, sizeof(businessAckBuf), ctx.readAckTimeout);
+			}
+			catch (::timeout_exception) {
+				timeout = true;
+			}
+
+			ctx.ackCode = (iap_business_ack_code_e)businessAckBuf[1];
+			if (!timeout && ctx.ackCode == ACK_CODE_SUCCESS)
+			{
+				ctx.currentRetry = 0;
+				ctx.in_out_status = IAP_STATUS_SUBSTATUS_WRITE_DATA;
+				ctx.process_status = IAP_STATUS_END;
+				ctx.primary_status = IAP_STATUS_COMPLETE;
+				ctx.onBusinessSendOk(ctx);
+			}
+			else
+			{
+				ctx.in_out_status = IAP_STATUS_SUBSTATUS_WRITE_DATA;
+				ctx.currentRetry++;
+			}
+			if (ctx.currentRetry >= ctx.maximumRetry)
+			{
+				ctx.terinmateReason = IAP_TERMINATE_REASON_OVER_THE_MAX_RETRY_COUNT;
+				ctx.primary_status = IAP_STATUS_TERMINATE;
+			}
+			break;
+		}
+		break;
+	case IAP_STATUS_TERMINATE:
+		return false;
+	case IAP_STATUS_COMPLETE:
+		return false;
+	}
+	return true;
+}
+
 void iap_run(IAPContext& ctx)
 {
 	while (!stop && iap_handle(ctx))
+	{
+	}
+}
+
+void iap_run_switch_boot(IAPContext& ctx)
+{
+	while (!stop && iap_handle_switch_boot(ctx))
 	{
 	}
 }

@@ -20,6 +20,7 @@ struct HIDDevice
 	uint16_t vid = 0;
 	uint16_t pid = 0;
 	uint8_t reportId;
+	uint16_t usage;
 };
 
 bool HIDInit();

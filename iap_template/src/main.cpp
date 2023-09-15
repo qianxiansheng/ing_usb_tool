@@ -203,7 +203,7 @@ static void LoadData()
 
 static void LoadData0()
 {
-	std::filesystem::path binName("C:\\Users\\leosh\\Desktop\\USB tool\\output\\INGIAP_ING_U_HW2_1_3_SW1_0_1_CRC_A_N_20230905_1742.bin");
+	std::filesystem::path binName("C:\\Users\\leosh\\Desktop\\USB tool\\output\\INGIAP_INGCH_HW1_0_4_SW2_2_4_CRC_A_N_20230909_1724.bin");
 	auto data = utils::readFileData(binName);
 	iap_bin = data;
 	g_file_valid_flag = true;
@@ -257,13 +257,12 @@ static void IAPThread()
 			iap_config.switchDelay,
 			iap_config.switchDelay,
 			onbusinessOk, &iap_ctx);
-		iap_ctx.process_status = IAP_STATUS_SEND_SWITCH_APP;
-		iap_run(iap_ctx);
+		iap_run_switch_boot(iap_ctx);
 		if (iap_ctx.primary_status == IAP_STATUS_COMPLETE)
 		{
 			CloseHIDInterface(hid);
 			hid.phandle = NULL;
-			showLabel("Send switch APP Success.");
+			showLabel("Send switch BOOT Success.");
 			SearchDevice(iap_config.boot_vid, iap_config.boot_pid, 
 				iap_config.boot_rid, iap_config.searchDeviceTimeout, &hid);
 
@@ -273,6 +272,10 @@ static void IAPThread()
 				showAlert("Open BOOT Failed!");
 				g_upgrading_flag = false;
 				return;
+			}
+			else
+			{
+				showLabel("Open Success! BOOT");
 			}
 		}
 		else
@@ -316,6 +319,9 @@ static void IAPThread()
 static bool main_init(int argc, char* argv[])
 {
 	ImGuiIO& io = ImGui::GetIO();
+	// disable imgui.ini
+	io.IniFilename = NULL;
+	io.LogFilename = NULL;
 
 	selfName = argv[0];
 
