@@ -179,6 +179,7 @@
     <ClCompile Include="..\common\util\utils.cpp" />
     <ClCompile Include="src\bingen\bin.cpp" />
     <ClCompile Include="src\bingen\bingen.cpp" />
+    <ClCompile Include="src\bingen\execonfig.cpp" />
     <ClCompile Include="src\bingen\memedit.cpp" />
     <ClCompile Include="src\ingiap\ingiap.cpp" />
     <ClCompile Include="src\main.cpp" />

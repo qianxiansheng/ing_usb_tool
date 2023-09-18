@@ -30,6 +30,7 @@ enum IAPStatus
 enum IAPTerminateReason
 {
 	IAP_TERMINATE_REASON_OVER_THE_MAX_RETRY_COUNT = 0x00,
+	IAP_TERMINATE_REASON_PROTOCOL_ERROR,
 	IAP_TERMINATE_REASON_DEVICE_LOST,
 };
 
@@ -78,6 +79,7 @@ enum iap_business_ack_code_e
 	ACK_CODE_HEADER_UPGRADE_TYPE_ERROR = 0xF7,
 	ACK_CODE_HEADER_ENCRYPT_ERROR = 0xF8,
 };
+std::string iap_ack_str(iap_business_ack_code_e c);
 
 class IAPContext;
 

@@ -7,11 +7,11 @@
 
 iap_config_t iap_config = { };
 
-#define IAP_CONFIG_DEFAULT_BOOT_VID "FFFF"
-#define IAP_CONFIG_DEFAULT_BOOT_PID "FA22"
+#define IAP_CONFIG_DEFAULT_BOOT_VID "36B0"
+#define IAP_CONFIG_DEFAULT_BOOT_PID "0101"
 #define IAP_CONFIG_DEFAULT_BOOT_RID "3F"
-#define IAP_CONFIG_DEFAULT_APP_VID  "FFFF"
-#define IAP_CONFIG_DEFAULT_APP_PID  "FA28"
+#define IAP_CONFIG_DEFAULT_APP_VID  "36B0"
+#define IAP_CONFIG_DEFAULT_APP_PID  "0102"
 #define IAP_CONFIG_DEFAULT_APP_RID  "2F"
 
 #define IAP_CONFIG_DEFAULT_SEARCH_DEVICE_TIMEOUT  8000
@@ -73,7 +73,6 @@ void Loadini(std::filesystem::path ini_path)
 	utils::ValidateU16Text((char*)reader.Get("app", "pid"     , IAP_CONFIG_DEFAULT_APP_PID).c_str(), c.app_pid);
 	utils::ValidateU8Text ((char*)reader.Get("app", "reportid", IAP_CONFIG_DEFAULT_APP_RID).c_str(), c.app_rid);
 }
-
 
 void LoadConfigINI()
 {

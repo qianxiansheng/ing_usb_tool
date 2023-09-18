@@ -184,45 +184,47 @@ std::string iap_ack_str(iap_business_ack_code_e c)
 	switch (c)
 	{
 	case ACK_CODE_SUCCESS:
-		return "ACK_CODE_SUCCESS";
+		return "success!";
 	case ACK_CODE_UNKNOWN_CMD:
-		return "ACK_CODE_UNKNOWN_CMD";
+		return "invalid cmd";
 	case ACK_CODE_LENGTH_ERORR:
-		return "ACK_CODE_LENGTH_ERORR";
+		return "length error";
 	case ACK_CODE_CRC_ERROR:
-		return "ACK_CODE_CRC_ERROR";
+		return "CRC error";
 	case ACK_CODE_BLOCK_NUM_ERROR:
-		return "ACK_CODE_BLOCK_NUM_ERROR";
+		return "block number error";
 	case ACK_CODE_BLOCK_SIZE_ERROR:
-		return "ACK_CODE_BLOCK_SIZE_ERROR";
+		return "block size error";
 	case ACK_CODE_WRITE_OFFSET_ERROR:
-		return "ACK_CODE_WRITE_OFFSET_ERROR";
+		return "write offset error";
 	case ACK_CODE_READ_OFFSET_ERROR:
-		return "ACK_CODE_READ_OFFSET_ERROR";
+		return "read offset error";
 	case ACK_CODE_ARGUMENT_ERROR:
-		return "ACK_CODE_ARGUMENT_ERROR";
+		return "parameter error";
 	case ACK_CODE_FLASH_OPERATION_FAILED:
-		return "ACK_CODE_FLASH_OPERATION_FAILED";
+		return "flash operation failed";
 	case ACK_CODE_STATUS_ERROR:
-		return "ACK_CODE_STATUS_ERROR";
+		return "condition not satisfied";
 	case ACK_CODE_HEADER_IDENTIFY_ERROR:
-		return "ACK_CODE_HEADER_IDENTIFY_ERROR";
+		return "[header] error: upgradeFlag";
 	case ACK_CODE_HEADER_CHIP_ID_ERROR:
-		return "ACK_CODE_HEADER_CHIP_ID_ERROR";
+		return "[HEADER] error: chipID";
 	case ACK_CODE_HEADER_ITEM_INFO_ERROR:
-		return "ACK_CODE_HEADER_ITEM_INFO_ERROR";
+		return "[HEADER] error: itemInfo";
 	case ACK_CODE_HEADER_HW_VERSION_ERROR:
-		return "ACK_CODE_HEADER_HW_VERSION_ERROR";
+		return "[HEADER] error: HW version";
 	case ACK_CODE_HEADER_SW_VERSION_ERROR:
-		return "ACK_CODE_HEADER_SW_VERSION_ERROR";
+		return "[HEADER] error: SW version";
 	case ACK_CODE_HEADER_CHECK_INFO_ERROR:
-		return "ACK_CODE_HEADER_CHECK_INFO_ERROR";
+		return "[HEADER] error: CHECK INFO";
+	case ACK_CODE_HEADER_BLOCK_INFO_ERROR:
+		return "[HEADER] error: BLOCK INFO";
 	case ACK_CODE_HEADER_UPGRADE_TYPE_ERROR:
-		return "ACK_CODE_HEADER_UPGRADE_TYPE_ERROR";
+		return "[HEADER] error: upgrade type";
 	case ACK_CODE_HEADER_ENCRYPT_ERROR:
-		return "ACK_CODE_HEADER_ENCRYPT_ERROR";
+		return "[HEADER] error: encrypt";
 	default:
-		return "ACK_CODE_UNKNOWN_ERROR";
+		return "unknown error";
 	}
 }
 
@@ -358,37 +360,46 @@ bool iap_handle(IAPContext& ctx)
 			} catch (::timeout_exception) {
 				timeout = true;
 			}
-			
 			ctx.ackCode = (iap_business_ack_code_e)businessAckBuf[1];
-			if (!timeout && ctx.ackCode == ACK_CODE_SUCCESS)
-			{
-				ctx.currentRetry = 0;
-				ctx.in_out_status = IAP_STATUS_SUBSTATUS_WRITE_DATA;
 
-				if (ctx.process_status == IAP_STATUS_SEND_START_CMD)
-				{
-					ctx.process_status = IAP_STATUS_SEND_WRITE_FLASH;
-				}
-				else if (ctx.process_status == IAP_STATUS_SEND_WRITE_FLASH)
-				{
-					ctx.bin_size_pos += ctx.current_size;
-					ctx.wBlockIdx++;
-					if (ctx.wBlockIdx == ctx.wBlockNum)
-						ctx.process_status = IAP_STATUS_SEND_SWITCH_APP;
-				}
-				else if (ctx.process_status == IAP_STATUS_SEND_SWITCH_APP)
-				{
-					ctx.process_status = IAP_STATUS_END;
-					ctx.primary_status = IAP_STATUS_COMPLETE;
-				}
-				ctx.onBusinessSendOk(ctx);
-			}
-			else
+			if (timeout)
 			{
 				ctx.in_out_status = IAP_STATUS_SUBSTATUS_WRITE_DATA;
 				ctx.currentRetry++;
 			}
-			if (ctx.currentRetry >= ctx.maximumRetry)
+			else
+			{
+				ctx.currentRetry = 0;
+
+				if (ctx.ackCode == ACK_CODE_SUCCESS)
+				{
+					ctx.in_out_status = IAP_STATUS_SUBSTATUS_WRITE_DATA;
+
+					if (ctx.process_status == IAP_STATUS_SEND_START_CMD)
+					{
+						ctx.process_status = IAP_STATUS_SEND_WRITE_FLASH;
+					}
+					else if (ctx.process_status == IAP_STATUS_SEND_WRITE_FLASH)
+					{
+						ctx.bin_size_pos += ctx.current_size;
+						ctx.wBlockIdx++;
+						if (ctx.wBlockIdx == ctx.wBlockNum)
+							ctx.process_status = IAP_STATUS_SEND_SWITCH_APP;
+					}
+					else if (ctx.process_status == IAP_STATUS_SEND_SWITCH_APP)
+					{
+						ctx.process_status = IAP_STATUS_END;
+						ctx.primary_status = IAP_STATUS_COMPLETE;
+					}
+					ctx.onBusinessSendOk(ctx);
+				}
+				else
+				{
+					ctx.terinmateReason = IAP_TERMINATE_REASON_PROTOCOL_ERROR;
+					ctx.primary_status = IAP_STATUS_TERMINATE;
+				}
+			}
+			if ((ctx.currentRetry >= ctx.maximumRetry))
 			{
 				ctx.terinmateReason = IAP_TERMINATE_REASON_OVER_THE_MAX_RETRY_COUNT;
 				ctx.primary_status = IAP_STATUS_TERMINATE;

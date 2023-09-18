@@ -93,6 +93,9 @@
     <ClCompile Include="..\common\imgui\extensions\ImConsole.cpp">
       <Filter>src\imgui\extensions</Filter>
     </ClCompile>
+    <ClCompile Include="src\bingen\execonfig.cpp">
+      <Filter>src\bingen</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\pch.h">

@@ -69,7 +69,7 @@ static bool UIThreadEventHandler()
 {
 	UIEvent e;
 	queueUI->take(e);
-	printf("event type: %d %s", e.eventType, e.message.c_str());
+	printf("event type: %d %s\n", e.eventType, e.message.c_str());
 	switch (e.eventType)
 	{
 	case UI_EVENT_TYPE_ALERT_MESSAGE:
@@ -168,6 +168,19 @@ static void SearchDeviceBootOrAPP(uint16_t bvid, uint16_t bpid, uint16_t avid, u
 	}
 }
 
+static uint32_t takeout_32_little(uint8_t* buf)
+{
+	return (buf[0]) | (buf[1] << 8) | (buf[2] << 16) | (buf[3] << 24);
+}
+static uint32_t takeout_16_little(uint8_t* buf)
+{
+	return (buf[0]) | (buf[1] << 8);
+}
+static uint32_t takeout_8_little(uint8_t* buf)
+{
+	return (buf[0]);
+}
+
 static void LoadData()
 {
 	uint32_t size = (uint32_t)std::filesystem::file_size(selfName);
@@ -179,15 +192,38 @@ static void LoadData()
 	uint32_t N_ = 0;
 
 	uint8_t* self_data = self.data();
-	uint32_t k = (uint32_t)self.size();
-
-	if (self_data[k - 4] == ( IAP_GEN_EXE_SUFFIX &        0xFF) &&
-		self_data[k - 3] == ((IAP_GEN_EXE_SUFFIX >> 8)  & 0xFF) &&
-		self_data[k - 2] == ((IAP_GEN_EXE_SUFFIX >> 16) & 0xFF) &&
-		self_data[k - 1] == ((IAP_GEN_EXE_SUFFIX >> 24) & 0xFF))
+	uint32_t self_size = (uint32_t)self.size();
+	uint32_t k = self_size;
+	k -= 4;
+	if (takeout_32_little(&self_data[k]) == IAP_GEN_EXE_SUFFIX)
 	{
-		N = self[k - 8] | (self[k - 7] << 8) | (self[k - 6] << 16) | (self[k - 5] << 24);
-		N_ = k - N - 8;
+		k -= 4;
+		N = takeout_32_little(&self_data[k]);
+		N_ = self_size - N - 38;
+		k -= 4; iap_config.readAckTimeout = takeout_32_little(&self_data[k]);
+		k -= 4; iap_config.searchDeviceTimeout = takeout_32_little(&self_data[k]);
+		k -= 4; iap_config.switchDelay = takeout_32_little(&self_data[k]);
+		k -= 4; iap_config.rebootDelay = takeout_32_little(&self_data[k]);
+		k -= 4; iap_config.retryNum = takeout_32_little(&self_data[k]);
+		k -= 1; iap_config.app_rid = takeout_8_little(&self_data[k]);
+		k -= 2; iap_config.app_pid = takeout_16_little(&self_data[k]);
+		k -= 2; iap_config.app_vid = takeout_16_little(&self_data[k]);
+		k -= 1; iap_config.boot_rid = takeout_8_little(&self_data[k]);
+		k -= 2; iap_config.boot_pid = takeout_16_little(&self_data[k]);
+		k -= 2; iap_config.boot_vid = takeout_16_little(&self_data[k]);
+
+		printf("boot vid:0x%04X\n", iap_config.boot_vid);
+		printf("boot pid:0x%04X\n", iap_config.boot_pid);
+		printf("boot rid:0x%04X\n", iap_config.boot_rid);
+		printf("app  vid:0x%04X\n", iap_config.app_vid);
+		printf("app  pid:0x%04X\n", iap_config.app_pid);
+		printf("app  rid:0x%04X\n", iap_config.app_rid);
+		printf("retryNum:%d\n", iap_config.retryNum);
+		printf("rebootDelay:%d\n", iap_config.rebootDelay);
+		printf("switchDelay:%d\n", iap_config.switchDelay);
+		printf("searchDeviceTimeout:%d\n", iap_config.searchDeviceTimeout);
+		printf("readAckTimeout:%d\n", iap_config.readAckTimeout);
+
 
 		iap_bin.resize(N_);
 		memcpy(iap_bin.data(), self_data + N, N_);
@@ -203,7 +239,7 @@ static void LoadData()
 
 static void LoadData0()
 {
-	std::filesystem::path binName("C:\\Users\\leosh\\Desktop\\USB tool\\output\\INGIAP_INGCH_HW1_0_4_SW2_2_4_CRC_A_N_20230909_1724.bin");
+	std::filesystem::path binName("C:\\Users\\leosh\\Desktop\\USB tool\\output\\INGIAP.bin");
 	auto data = utils::readFileData(binName);
 	iap_bin = data;
 	g_file_valid_flag = true;
@@ -212,6 +248,9 @@ static void LoadData0()
 extern IAPContext iap_ctx;
 #define showLabel UIThreadPutEvent_LabelMessage
 #define showAlert UIThreadPutEvent_AlertMessage
+#define showAlert_(msg) \
+	UIThreadPutEvent_LabelMessage(msg);\
+	UIThreadPutEvent_AlertMessage(msg);
 void onbusinessOk(IAPContext& ctx)
 {
 	progress_limit = ctx.bin_size_limit;
@@ -268,8 +307,7 @@ static void IAPThread()
 
 			if (hid.phandle == NULL)
 			{
-				showLabel("Open BOOT Failed!");
-				showAlert("Open BOOT Failed!");
+				showAlert_("Open BOOT Failed!");
 				g_upgrading_flag = false;
 				return;
 			}
@@ -281,8 +319,7 @@ static void IAPThread()
 		else
 		{
 			CloseHIDInterface(hid);
-			showLabel("Send switch APP Failed.");
-			showAlert("Send switch APP Failed.");
+			showAlert_("Send switch APP Failed.");
 			g_upgrading_flag = false;
 			return;
 		}
@@ -296,21 +333,32 @@ static void IAPThread()
 	try {
 		iap_run(iap_ctx);
 	} catch (std::exception) {
-		showLabel("The device has been lost.");
-		showAlert("The device has been lost.");
+		showAlert_("The device has been lost.");
 		CloseHIDInterface(hid);
 		g_upgrading_flag = false;
 		return;
 	}
 	if (iap_ctx.primary_status == IAP_STATUS_COMPLETE)
 	{
-		showAlert("Upgrade completed.");
-		showLabel("Upgrade completed.");
+		showAlert_("Upgrade completed.");
 	}
 	else
 	{
-		showAlert("Upgrade error, please try again.");
-		showLabel("Upgrade error, please try again.");
+		if (iap_ctx.terinmateReason == IAP_TERMINATE_REASON_PROTOCOL_ERROR)
+		{
+			char buf[128] = { 0 };
+			sprintf(buf, "Upgrade error, please try again.\nError code:0x%02X\n%s", 
+				iap_ctx.ackCode, iap_ack_str(iap_ctx.ackCode).c_str());
+			showAlert_(buf);
+		}
+		else if (iap_ctx.terinmateReason == IAP_TERMINATE_REASON_OVER_THE_MAX_RETRY_COUNT)
+		{
+			showAlert_("Timeout error, please try again.");
+		}
+		else
+		{
+			showAlert_("Upgrade error, please try again.");
+		}
 	}
 	CloseHIDInterface(hid);
 	g_upgrading_flag = false;
@@ -324,8 +372,6 @@ static bool main_init(int argc, char* argv[])
 	io.LogFilename = NULL;
 
 	selfName = argv[0];
-
-	LoadConfigINI();
 
 	// Theme
 	ImGui::StyleColorsLight();
