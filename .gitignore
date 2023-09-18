@@ -350,3 +350,4 @@ imgui.ini
 bin_config.ini
 
 *.cgen
+/usb_fota/exe_config.ini
