@@ -45,7 +45,7 @@ void Loadini(std::filesystem::path ini_path)
 {
 	bin_config_t& c = bin_config;
 
-	INIReader reader(ini_path.u8string());
+	INIReader reader(ini_path.generic_string());
 	
 	strcpy(c.identify,		  reader.Get("option", "identify", BIN_CONFIG_DEFAULT_IDENTIFY).c_str());
 	strcpy(c.chip_code,		  reader.Get("option", "chip_code", "--").c_str());

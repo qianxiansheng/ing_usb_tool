@@ -147,6 +147,9 @@ void append_8_little(uint16_t v, uint8_t* outbuf)
 
 static void GenerateBin()
 {
+	if (!std::filesystem::exists(export_dir))
+		std::filesystem::create_directory(export_dir);
+
 	export_path = std::filesystem::path(export_dir).concat(ExportFileName());
 	
 	//=================================================================================
@@ -547,7 +550,11 @@ void ShowBinGenWindow(bool* p_open)
 			ImGui::SetNextItemWidth(al);
 			ImGui::InputScalar("##RETYR_NUM", ImGuiDataType_S32, &exe_config.retryNum, NULL, NULL, "%u");
 			ImGui::SameLine();
-			utils::HelpMarker("When the read ack times out, the command will be resent. The retry count is the maximum number of resends.");
+			utils::HelpMarker("When the read ack times out, the command will be resent. The retry count is the maximum number of resends, Range 1~3.");
+			if (exe_config.retryNum < 1)
+				exe_config.retryNum = 1;
+			if (exe_config.retryNum > 3)
+				exe_config.retryNum = 3;
 
 			ImGui::TableNextRow();
 			ImGui::TableNextColumn();
@@ -556,7 +563,11 @@ void ShowBinGenWindow(bool* p_open)
 			ImGui::SetNextItemWidth(al);
 			ImGui::InputScalar("##REBOOT_DELAY", ImGuiDataType_S32, &exe_config.rebootDelay, NULL, NULL, "%u");
 			ImGui::SameLine();
-			utils::HelpMarker("The delay time used for rebooting, in milliseconds.");
+			utils::HelpMarker("The delay time used for rebooting, in milliseconds, Range 0~1000.");
+			if (exe_config.rebootDelay < IAP_REBOOT_DELAY_MIN)
+				exe_config.rebootDelay = IAP_REBOOT_DELAY_MIN;
+			if (exe_config.rebootDelay > IAP_REBOOT_DELAY_MAX)
+				exe_config.rebootDelay = IAP_REBOOT_DELAY_MAX;
 
 			ImGui::TableNextRow();
 			ImGui::TableNextColumn();
@@ -565,7 +576,11 @@ void ShowBinGenWindow(bool* p_open)
 			ImGui::SetNextItemWidth(al);
 			ImGui::InputScalar("##SWITCH_DELAY", ImGuiDataType_S32, &exe_config.switchDelay, NULL, NULL, "%u");
 			ImGui::SameLine();
-			utils::HelpMarker("The delay time used for switching, in milliseconds.");
+			utils::HelpMarker("The delay time used for switching, in milliseconds, Range 0~1000.");
+			if (exe_config.switchDelay < IAP_SWITCH_DELAY_MIN)
+				exe_config.switchDelay = IAP_SWITCH_DELAY_MIN;
+			if (exe_config.switchDelay > IAP_SWITCH_DELAY_MAX)
+				exe_config.switchDelay = IAP_SWITCH_DELAY_MAX;
 
 			ImGui::TableNextRow();
 			ImGui::TableNextColumn();
@@ -574,7 +589,9 @@ void ShowBinGenWindow(bool* p_open)
 			ImGui::SetNextItemWidth(al);
 			ImGui::InputScalar("##SEARCH_DEVICE_TIMEOUT", ImGuiDataType_S32, &exe_config.searchDeviceTimeout, NULL, NULL, "%u");
 			ImGui::SameLine();
-			utils::HelpMarker("Timeout for upgrade tools to find devices.");
+			utils::HelpMarker("Timeout for upgrade tools to find devices. \nAt least 1000. \nRecommended setting to a value greater than 'swiching/rebooting delay'.");
+			if (exe_config.searchDeviceTimeout < 1000)
+				exe_config.searchDeviceTimeout = 1000;
 
 			ImGui::TableNextRow();
 			ImGui::TableNextColumn();
@@ -583,7 +600,9 @@ void ShowBinGenWindow(bool* p_open)
 			ImGui::SetNextItemWidth(al);
 			ImGui::InputScalar("##READ_ACK_TIMEOUT", ImGuiDataType_S32, &exe_config.readAckTimeout, NULL, NULL, "%u");
 			ImGui::SameLine();
-			utils::HelpMarker("Timeout for reading ack.");
+			utils::HelpMarker("Timeout for reading ack. \nAt least 1000.");
+			if (exe_config.readAckTimeout < 1000)
+				exe_config.readAckTimeout = 1000;
 
 			ImGui::EndTable();
 		}
@@ -599,7 +618,6 @@ void ShowBinGenWindow(bool* p_open)
 		ImGui::SameLine();
 		ImGuiDCXAxisAlign(cl);
 		ImGui::InputTextEx("##BIN_FILE_NAME", "", c.in_name, sizeof(c.in_name), ImVec2(600, 0.0f), 0);
-		ImGui::SameLine();
 
 
 		//=================================================================================

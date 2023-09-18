@@ -55,7 +55,7 @@ void LoadEXEConfig(std::filesystem::path ini_path)
 {
 	exe_config_t& c = exe_config;
 
-	INIReader reader(ini_path.u8string());
+	INIReader reader(ini_path.generic_string());
 
 	c.retryNum    = reader.GetInteger("option", "retryNum", EXE_CONFIG_DEFAULT_RETRY_NUM);
 	c.rebootDelay = reader.GetInteger("option", "rebootDelay", EXE_CONFIG_DEFAULT_REBOOT_DELAY);

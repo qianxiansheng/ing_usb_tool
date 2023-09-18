@@ -24,6 +24,7 @@ struct HIDDevice
 };
 
 bool HIDInit();
+void HIDExit();
 HIDFindResultEnum OpenHIDInterface(uint16_t vid, uint16_t pid, HIDDevice* hid);
 HIDFindResultEnum OpenHIDInterface(uint16_t vid, uint16_t pid, uint8_t reportId, HIDDevice* hid);
 void CloseHIDInterface(HIDDevice hid);

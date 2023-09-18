@@ -241,6 +241,19 @@ static void LoadData0()
 {
 	std::filesystem::path binName("C:\\Users\\leosh\\Desktop\\USB tool\\output\\INGIAP.bin");
 	auto data = utils::readFileData(binName);
+
+	iap_config.readAckTimeout = 1000;
+	iap_config.searchDeviceTimeout = 8000;
+	iap_config.switchDelay = 1000;
+	iap_config.rebootDelay = 1000;
+	iap_config.retryNum = 3;
+	iap_config.app_rid = 0x2F;
+	iap_config.app_pid = 0x0102;
+	iap_config.app_vid = 0x36B0;
+	iap_config.boot_rid = 0x3F;
+	iap_config.boot_pid = 0x0101;
+	iap_config.boot_vid = 0x36B0;
+
 	iap_bin = data;
 	g_file_valid_flag = true;
 }
@@ -401,6 +414,7 @@ static void main_shutdown(void)
 	UIThreadPutEvent_Exit();
 	stop = true;
 	delete pool;
+	HIDExit();
 }
 
 static void ShowRootWindowProgress(void)
