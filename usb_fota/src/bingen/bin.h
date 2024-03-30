@@ -49,6 +49,9 @@ struct bin_config_t
 	unsigned char enc_key[16];
 	char encryption_iv[33];	// AES iv
 	unsigned char enc_iv[16];
+
+	char load_address[9];
+	uint32_t load_addr;	    // bin文件目标位置     0x0202A000/0x02003000
 	//======================//====================================
 
 	char in_name[BIN_NAME_BUFF_MAX_SIZE];

@@ -223,6 +223,12 @@ std::string iap_ack_str(iap_business_ack_code_e c)
 		return "[HEADER] error: upgrade type";
 	case ACK_CODE_HEADER_ENCRYPT_ERROR:
 		return "[HEADER] error: encrypt";
+	case ACK_CODE_HEADER_CRC_ERROR:
+		return "[HEADER] error: headerCRC";
+	case ACK_CODE_HEADER_LOAD_ADDRESS_ERROR:
+		return "[HEADER] error: load address";
+	case ACK_CODE_HEADER_BIN_SIZE_ERROR:
+		return "[HEADER] error: bin size";
 	default:
 		return "unknown error";
 	}

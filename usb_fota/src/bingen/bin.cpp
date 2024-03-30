@@ -32,6 +32,7 @@ void Saveini(std::filesystem::path ini_path)
 	out << "encryption_xor=" << c.encryption_xor << std::endl;
 	out << "encryption_key=" << c.encryption_key << std::endl;
 	out << "encryption_iv=" << c.encryption_iv << std::endl;
+	out << "load_address=" << c.load_address << std::endl;
 	out << std::endl;
 
 	out << "[app]" << std::endl;
@@ -61,6 +62,9 @@ void Loadini(std::filesystem::path ini_path)
 	strcpy(c.encryption_xor,  reader.Get("option", "encryption_xor", "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF").c_str());
 	strcpy(c.encryption_key,  reader.Get("option", "encryption_key", "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF").c_str());
 	strcpy(c.encryption_iv,   reader.Get("option", "encryption_iv",  "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF").c_str());
+
+	strcpy(c.load_address, reader.Get("option", "load_address", "0202A000").c_str());
+	c.load_addr = utils::htoi_32(c.load_address);
 
 	strcpy(c.in_name_gbk, reader.Get("app", "name", "").c_str());
 	strcpy(c.in_name, utils::gbk_to_utf8(c.in_name_gbk).c_str());
@@ -137,6 +141,21 @@ void Exportbin(std::filesystem::path export_bin_path)
 	{
 		i += 34;
 	}
+	//==============================================================
+	header[i++] = (c.load_addr >> 0 ) & 0xFF;
+	header[i++] = (c.load_addr >> 8 ) & 0xFF;
+	header[i++] = (c.load_addr >> 16) & 0xFF;
+	header[i++] = (c.load_addr >> 24) & 0xFF;
+	header[i++] = (c.in_size >> 0 ) & 0xFF;
+	header[i++] = (c.in_size >> 8 ) & 0xFF;
+	header[i++] = (c.in_size >> 16) & 0xFF;
+	header[i++] = (c.in_size >> 24) & 0xFF;
+	//==============================================================
+	i += 12;	//Reverse
+	//==============================================================
+	uint16_t headerCRC = utils::crc16_modbus(header, (sizeof(header) - sizeof(uint16_t)));
+	header[i++] = headerCRC & 0xFF;
+	header[i++] = headerCRC >> 8;
 	//==============================================================
 
 	std::ofstream out;

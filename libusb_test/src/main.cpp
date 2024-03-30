@@ -251,7 +251,7 @@ void func(uint16_t vid, uint16_t pid)
 	hid_free_enumeration(hid_device_list);
 }
 
-int main5()
+int main3()
 {
 	hid_init();
 	//func(0xFFFF, 0xFA28);
@@ -274,4 +274,59 @@ int main4()
 	);
 
 	return 0;
+}
+
+
+uint8_t zip_data[] = {
+	0x00,
+};
+
+int main5()
+{
+	std::ofstream ofs;
+
+	ofs.open("1.zip", std::ios::out | std::ios::binary);
+
+	ofs.write((char*)zip_data, sizeof(zip_data));
+	ofs.flush();
+	ofs.close();
+
+	return 0;
+}
+
+int main6()
+{
+	std::filesystem::path filename("D:\\myResource\\work\\other\\地桩\\轻车桩00版本\\bin\\packet\\packet.zip");
+
+	std::vector<uint8_t> data = readFileData(filename);
+
+	std::ofstream ofs;
+
+	ofs.open("D:\\myResource\\work\\other\\地桩\\轻车桩00版本\\bin\\packet\\zip.cpp");
+
+	ofs << "const uint8_t zip_data[] = {" << std::endl;
+
+	char buf[] = "0xFF, ";
+
+	uint32_t lineSize = 16;
+	uint32_t lineNum = (data.size() - 1) / lineSize + 1;
+	uint32_t lineLast = (data.size() - 1) % lineSize + 1;
+	for (uint32_t i = 0; i < lineNum; ++i)
+	{
+		if (i == lineNum - 1)
+			lineSize = lineLast;
+
+		for (uint32_t j = 0; j < lineSize; ++j)
+		{
+			sprintf(buf, "0x%02X, ", data[i * 16 + j]);
+
+			ofs << buf;
+		}
+		ofs << std::endl;
+	}
+
+	ofs << "};" << std::endl;
+
+	ofs.flush();
+	ofs.close();
 }
