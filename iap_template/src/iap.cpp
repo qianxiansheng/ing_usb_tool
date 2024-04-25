@@ -55,7 +55,7 @@ int hid_get_report(hid_device* dev, uint8_t* data, uint32_t size, int timeout)
 	return r;
 }
 
-void iap_transfer(HIDDevice& dev, uint8_t* data, uint32_t size, uint16_t packIdxReverse, bool isFirst)
+void iap_transfer(HIDDevice& dev, uint8_t* data, uint32_t size, uint16_t packIdxReverse, bool isFirst, int timeout)
 {
 	assert(size <= IAP_PRO_TRANSFER_PAYLOAD_SIZE);
 	uint8_t* buf = hid_report_buf + 1;
@@ -78,9 +78,19 @@ void iap_transfer(HIDDevice& dev, uint8_t* data, uint32_t size, uint16_t packIdx
 		sprintf(sbuf, "hid_set_report failed");
 		throw std::exception(sbuf);
 	}
+	nRet = hid_get_report(dev.phandle, buf, size, timeout);
+	if (nRet < 0)
+	{
+		sprintf(sbuf, "hid_get_report failed");
+		throw std::exception(sbuf);
+	}
+	else if (nRet == 0)
+	{
+		throw ::timeout_exception();
+	}
 }
 
-void iap_business(HIDDevice& dev, uint8_t* data, uint32_t size)
+void iap_business(HIDDevice& dev, uint8_t* data, uint32_t size, int timeout)
 {
 	assert(size >= 0);
 	uint16_t packSize = IAP_PRO_TRANSFER_PAYLOAD_SIZE;
@@ -96,7 +106,7 @@ void iap_business(HIDDevice& dev, uint8_t* data, uint32_t size)
 		currentPackSize = (packIdx == packNum - 1) ? packLastSize : packSize;
 		packIdxReverse = packNum - packIdx - 1;
 
-		iap_transfer(dev, data + (packIdx * packSize), currentPackSize, packIdxReverse, (packIdx == 0));
+		iap_transfer(dev, data + (packIdx * packSize), currentPackSize, packIdxReverse, (packIdx == 0), timeout);
 	}
 
 	char hexbuf[33] = { 0 };
@@ -109,16 +119,16 @@ uint16_t iap_transfer_read(HIDDevice& dev, uint8_t* data, bool* isFirst, int tim
 	uint8_t* buf = hid_report_buf + 1;
 	uint16_t len = 0;
 	char sbuf[64] = { 0 };
-	int nRet = hid_get_report(dev.phandle, buf, IAP_USB_HID_REPORT_CONTENT_SIZE, timeout);
-	if (nRet < 0)
-	{
-		sprintf(sbuf, "hid_get_report failed");
-		throw std::exception(sbuf);
-	}
-	else if (nRet == 0)
-	{
-		throw ::timeout_exception();
-	}
+	// int nRet = hid_get_report(dev.phandle, buf, IAP_USB_HID_REPORT_CONTENT_SIZE, timeout);
+	// if (nRet < 0)
+	// {
+	// 	sprintf(sbuf, "hid_get_report failed");
+	// 	throw std::exception(sbuf);
+	// }
+	// else if (nRet == 0)
+	// {
+	// 	throw ::timeout_exception();
+	// }
 
 	if (buf[0] != IAP_PRO_TRANSFER_HEADER)
 		throw transfer_pack_exception();
@@ -247,7 +257,7 @@ void iap_handle_send_start_cmd(IAPContext& ctx)
 	buf[i++] = (uint8_t)(crc);										// CRC
 	buf[i++] = crc >> 8;
 
-	iap_business(ctx.dev, buf, i);
+	iap_business(ctx.dev, buf, i, ctx.readAckTimeout);
 }
 
 void iap_handle_send_reboot_cmd(IAPContext& ctx)
@@ -262,7 +272,7 @@ void iap_handle_send_reboot_cmd(IAPContext& ctx)
 	uint16_t crc = utils::crc16_modbus(buf, i);
 	buf[i++] = crc & 0xFF;												// CRC
 	buf[i++] = crc >> 8;
-	iap_business(ctx.dev, buf, i);
+	iap_business(ctx.dev, buf, i, ctx.readAckTimeout);
 }
 
 void iap_handle_send_switch_app_cmd(IAPContext& ctx)
@@ -277,7 +287,7 @@ void iap_handle_send_switch_app_cmd(IAPContext& ctx)
 	uint16_t crc = utils::crc16_modbus(buf, i);
 	buf[i++] = crc & 0xFF;										// CRC
 	buf[i++] = crc >> 8;
-	iap_business(ctx.dev, buf, i);
+	iap_business(ctx.dev, buf, i, ctx.readAckTimeout);
 }
 
 void iap_handle_send_switch_boot_cmd(IAPContext& ctx)
@@ -292,7 +302,7 @@ void iap_handle_send_switch_boot_cmd(IAPContext& ctx)
 	uint16_t crc = utils::crc16_modbus(buf, i);
 	buf[i++] = crc & 0xFF;								// CRC
 	buf[i++] = crc >> 8;
-	iap_business(ctx.dev, buf, i);
+	iap_business(ctx.dev, buf, i, ctx.readAckTimeout);
 }
 
 void iap_handle_send_write_flash_cmd(IAPContext& ctx)
@@ -329,7 +339,7 @@ void iap_handle_send_write_flash_cmd(IAPContext& ctx)
 	buf[i++] = crc & 0xFF;
 	buf[i++] = crc >> 8;
 
-	iap_business(ctx.dev, buf, i);
+	iap_business(ctx.dev, buf, i, ctx.readAckTimeout);
 }
 
 bool iap_handle(IAPContext& ctx)
