@@ -14,6 +14,9 @@
     <Filter Include="src\imgui">
       <UniqueIdentifier>{4f8efc15-a0d6-45aa-b3bf-7863421b6754}</UniqueIdentifier>
     </Filter>
+    <Filter Include="src\glad">
+      <UniqueIdentifier>{651dd7e6-0874-4f83-b23a-945f14571846}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\main.cpp">
@@ -43,26 +46,48 @@
     <ClCompile Include="..\common\util\INIReader.cpp">
       <Filter>src\util</Filter>
     </ClCompile>
-    <ClCompile Include="..\common\imgui\backends\imgui_impl_opengl3.cpp">
+    <ClCompile Include="src\iap_template.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="src\imgui\backends\imgui_impl_opengl3.cpp">
       <Filter>src\imgui</Filter>
     </ClCompile>
-    <ClCompile Include="..\common\imgui\backends\imgui_impl_win32.cpp">
+    <ClCompile Include="src\imgui\backends\imgui_impl_win32.cpp">
       <Filter>src\imgui</Filter>
     </ClCompile>
-    <ClCompile Include="..\common\imgui\backends\imgui_impl_glfw.cpp">
+    <ClCompile Include="src\imgui\imgui.cpp">
       <Filter>src\imgui</Filter>
     </ClCompile>
-    <ClCompile Include="..\common\imgui\imgui_draw.cpp">
+    <ClCompile Include="src\imgui\imgui_draw.cpp">
       <Filter>src\imgui</Filter>
     </ClCompile>
-    <ClCompile Include="..\common\imgui\imgui_tables.cpp">
+    <ClCompile Include="src\imgui\imgui_tables.cpp">
       <Filter>src\imgui</Filter>
     </ClCompile>
-    <ClCompile Include="..\common\imgui\imgui_widgets.cpp">
+    <ClCompile Include="src\imgui\imgui_widgets.cpp">
       <Filter>src\imgui</Filter>
     </ClCompile>
-    <ClCompile Include="..\common\imgui\imgui.cpp">
-      <Filter>src\imgui</Filter>
+    <ClCompile Include="src\glad\glad.c">
+      <Filter>src\glad</Filter>
     </ClCompile>
+    <ClCompile Include="..\common\util\PEUtils.cpp">
+      <Filter>src\util</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="src\iap_template.h">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="resource.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="iap_template.rc">
+      <Filter>资源文件</Filter>
+    </ResourceCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="icon.ico">
+      <Filter>资源文件</Filter>
+    </Image>
   </ItemGroup>
 </Project>

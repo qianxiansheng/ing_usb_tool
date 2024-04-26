@@ -18,10 +18,13 @@
 #include "util/thread_pool.h"
 #include "util/utils.h"
 #include "util/myqueue.h"
+#include "util/PEUtils.h"
 
 #include "config.h"
 #include "usb.h"
 #include "iap.h"
+
+#include <glad/glad.h>
 
 #define IMIDTEXT(name, i) ((std::string(name) + std::to_string(i)).c_str())
 
@@ -179,6 +182,45 @@ static uint32_t takeout_16_little(uint8_t* buf)
 static uint32_t takeout_8_little(uint8_t* buf)
 {
 	return (buf[0]);
+}
+
+float iconTextureWidth;
+float iconTextureHeight;
+ImTextureID iconTextureID;
+
+static void LoadIconTexture()
+{
+	std::vector<uint8_t> self = utils::readFileData(selfName);
+
+	int size = 128;
+
+	std::vector<uint8_t> icon;
+	LoadIconByPE(self.data(), icon, size);
+	std::vector<uint8_t> dst = icon;
+
+	size_t w = static_cast<size_t>(size);
+	size_t h = static_cast<size_t>(size);
+	for (size_t i = 0; i < h; ++i) {
+		for (size_t j = 0; j < w; ++j) {
+			size_t d = ((i * w) + j) * 4;
+			size_t s = (((h - 1 - i) * w) + j) * 4;
+			dst[d + 0] = icon[s + 2];
+			dst[d + 1] = icon[s + 1];
+			dst[d + 2] = icon[s + 0];
+			dst[d + 3] = icon[s + 3];
+		}
+	}
+
+	GLuint textureID;
+	glGenTextures(1, &textureID);
+	glBindTexture(GL_TEXTURE_2D, textureID);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, dst.data());
+
+	iconTextureWidth = static_cast<float>(w);
+	iconTextureHeight = static_cast<float>(h);
+	iconTextureID = reinterpret_cast<void*>(static_cast<uintptr_t>(textureID));
 }
 
 static void LoadData()
@@ -377,7 +419,7 @@ static void IAPThread()
 	g_upgrading_flag = false;
 }
 
-static bool main_init(int argc, char* argv[])
+bool main_init(int argc, char* argv[])
 {
 	ImGuiIO& io = ImGui::GetIO();
 	// disable imgui.ini
@@ -402,6 +444,9 @@ static bool main_init(int argc, char* argv[])
 	// IAP bin data
 	LoadData();
 
+	// Icon data
+	LoadIconTexture();
+
 	// HID
 	HIDInit();
 
@@ -409,7 +454,7 @@ static bool main_init(int argc, char* argv[])
 }
 
 extern bool stop;
-static void main_shutdown(void)
+void main_shutdown(void)
 {
 	UIThreadPutEvent_Exit();
 	stop = true;
@@ -422,6 +467,8 @@ static void ShowRootWindowProgress(void)
 	ImVec2 contentRegionAvail = ImGui::GetContentRegionAvail();
 
 	ImGui::Text(label_message);
+
+	ImGui::Image(iconTextureID, ImVec2(iconTextureWidth, iconTextureHeight));
 
 	const float progress_global_size = contentRegionAvail.x;
 	float progress_global = (float)progress_pos / progress_limit;
@@ -477,22 +524,10 @@ static void ShowRootWindow(bool* p_open)
 	ImGui::End();
 }
 
-static int main_gui()
+int main_gui()
 {
 	ShowRootWindow(&show_root_window);
 
 	return 0;
 }
 
-
-#include "gui_glue_gl3.cpp"
-
-int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_ LPSTR, _In_ int nShowCmd)
-{
-	return main_(__argc, __argv);
-}
-
-int main()
-{
-	return main_(__argc, __argv);
-}
