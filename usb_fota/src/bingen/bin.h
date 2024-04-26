@@ -13,8 +13,6 @@ enum upgrade_type_e
 {
 	UPGRADE_TYPE_APP_ONLY = 0,				// 仅升级APP应用程序
 	UPGRADE_TYPE_PLATFORM_APP = 1,			// 升级platform+APP程序
-	UPGRADE_TYPE_PLATFORM_BOOT = 2,			// 升级platform+二级boot
-	UPGRADE_TYPE_PLATFORM_BOOT_APP = 3,		// 升级platform+二级boot+APP程序
 };
 enum encryption_type_e
 {
@@ -24,6 +22,12 @@ enum encryption_type_e
 
 struct bin_info_t
 {
+	char name[BIN_NAME_BUFF_MAX_SIZE];
+	char name_gbk[BIN_NAME_BUFF_MAX_SIZE];
+	char load_address[9];
+	uint32_t load_addr;	    // bin文件目标位置     0x0202A000/0x02003000
+	uint32_t size;			// 冗余 data->size
+	std::vector<uint8_t> data;
 };
 
 struct bin_config_t
@@ -50,16 +54,14 @@ struct bin_config_t
 	char encryption_iv[33];	// AES iv
 	unsigned char enc_iv[16];
 
-	char load_address[9];
-	uint32_t load_addr;	    // bin文件目标位置     0x0202A000/0x02003000
 	//======================//====================================
 
-	char in_name[BIN_NAME_BUFF_MAX_SIZE];
-	char in_name_gbk[BIN_NAME_BUFF_MAX_SIZE];
-	int in_size;
-	int in_crc;
-	std::vector<uint8_t> in_data;
+	int out_data_crc;
+	uint32_t out_data_load_addr;
 	std::vector<uint8_t> out_data;
+
+	bin_info_t platform;
+	bin_info_t app;
 };
 
 

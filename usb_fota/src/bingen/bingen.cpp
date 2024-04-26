@@ -31,35 +31,69 @@ static std::filesystem::path export_path;
 
 std::filesystem::path export_dir;
 
+void CalcCRC()
+{
 
-static void CalcCrc()
+}
+
+bool IsMergeable()
 {
 	auto& c = bin_config;
-
-	if (c.in_size == 0)
-		return;
-
-	if (c.check_type == CHECK_TYPE_CRC)
-	{
-		uint16_t crc16 = utils::crc16_modbus(c.in_data.data(), (uint16_t)c.in_data.size());
-		c.in_crc = crc16;
-	}
-	else if (c.check_type == CHECK_TYPE_SUM)
-	{
-		uint16_t sum = utils::sum_16(c.in_data.data(), (uint32_t)c.in_data.size());
-		c.in_crc = sum;
-	}
+	return (c.upgrade_type == upgrade_type_e::UPGRADE_TYPE_PLATFORM_APP && (c.platform.size != 0 && c.app.size != 0)) ||
+		   (c.upgrade_type == upgrade_type_e::UPGRADE_TYPE_APP_ONLY && c.app.size != 0);
 }
-static void ReloadInFile()
+
+void Mergebin()
 {
-	int size = ((bin_config.in_size - 1) / 16 + 1) * 16;
+	auto& c = bin_config;
+	if (!IsMergeable()) {
+		// Some bin files do not exist
+		c.out_data.resize(0);
+		return;
+	}
 
-	bin_config.in_data.resize(size);
-	memset(bin_config.in_data.data(), 0xFF, size);
-	utils::readFileData(bin_config.in_name_gbk, bin_config.in_data.data());
-
-	CalcCrc();
+	switch (c.upgrade_type)
+	{
+	case upgrade_type_e::UPGRADE_TYPE_PLATFORM_APP:
+	{
+		c.out_data_load_addr = c.platform.load_addr;
+		uint32_t app_relative_address = c.app.load_addr - c.out_data_load_addr;
+		uint32_t out_data_size = app_relative_address + c.app.data.size();
+		c.out_data.resize(out_data_size);
+		memset(c.out_data.data(), 0xFF, c.out_data.size());
+		memcpy(c.out_data.data(), c.platform.data.data(), c.platform.data.size());
+		memcpy(c.out_data.data() + app_relative_address, c.app.data.data(), c.app.data.size());
+		c.out_data_crc = utils::crc16_modbus(c.out_data.data(), c.out_data.size());
+	}
+	break;
+	case upgrade_type_e::UPGRADE_TYPE_APP_ONLY:
+	default:
+	{
+		c.out_data_load_addr = c.app.load_addr;
+		c.out_data.resize(c.app.data.size());
+		memcpy(c.out_data.data(), c.app.data.data(), c.app.data.size());
+		c.out_data_crc = utils::crc16_modbus(c.out_data.data(), c.out_data.size());
+	}
+	break;
+	}
 }
+
+static void ReloadPlatform()
+{
+	int size = ((bin_config.platform.size + 15) & ~(15));
+	bin_config.platform.data.resize(size);
+	memset(bin_config.platform.data.data(), 0xFF, size);
+	utils::readFileData(bin_config.platform.name_gbk, bin_config.platform.data.data());
+}
+
+static void ReloadApp()
+{
+	int size = ((bin_config.app.size + 15) & ~(15));
+	bin_config.app.data.resize(size);
+	memset(bin_config.app.data.data(), 0xFF, size);
+	utils::readFileData(bin_config.app.name_gbk, bin_config.app.data.data());
+}
+
 static std::string ExportFileName0()
 {
 	return "INGIAP.bin";
@@ -92,10 +126,6 @@ static std::string ExportFileName()
 		ss << "A_";
 	else if (c.upgrade_type == UPGRADE_TYPE_PLATFORM_APP)
 		ss << "PA_";
-	else if (c.upgrade_type == UPGRADE_TYPE_PLATFORM_BOOT)
-		ss << "PB_";
-	else if (c.upgrade_type == UPGRADE_TYPE_PLATFORM_BOOT_APP)
-		ss << "PBA_";
 
 	if (c.encryption_enable)
 	{
@@ -145,7 +175,7 @@ void append_8_little(uint16_t v, uint8_t* outbuf)
 	outbuf[0] = v >> 0;
 }
 
-static void GenerateBin()
+static bool GenerateBin()
 {
 	if (!std::filesystem::exists(export_dir))
 		std::filesystem::create_directory(export_dir);
@@ -157,16 +187,27 @@ static void GenerateBin()
 	//=================================================================================
 	{
 		auto& c = bin_config;
-		auto path = c.in_name_gbk;
-		uint32_t size = std::filesystem::is_regular_file(path) ?
-			static_cast<uint32_t>(std::filesystem::file_size(path)) : 0;
-
-		if (size != 0)
-		{
-			c.in_size = size;
-			ReloadInFile();
+		if (c.upgrade_type == upgrade_type_e::UPGRADE_TYPE_PLATFORM_APP) {
+			auto path = c.platform.name_gbk;
+			uint32_t size = std::filesystem::is_regular_file(path) ?
+				static_cast<uint32_t>(std::filesystem::file_size(path)) : 0;
+			if (size != 0) {
+				ReloadPlatform();
+			}
 		}
+		{
+			auto path = c.app.name_gbk;
+			uint32_t size = std::filesystem::is_regular_file(path) ?
+				static_cast<uint32_t>(std::filesystem::file_size(path)) : 0;
+			if (size != 0) {
+				ReloadApp();
+			}
+		}
+		Mergebin();
+		c.block_num = (c.out_data.size() - 1) / c.block_size + 1;
 	}
+
+
 
 	Exportbin(export_path);
 
@@ -227,10 +268,16 @@ static void GenerateBin()
 	auto exepath = std::filesystem::path(export_dir).concat("iap.exe");
 	std::ofstream ofs;
 	ofs.open(exepath, std::ios::out | std::ios::binary);
-	ofs.write((const char*)exeOut.data(), exeOut.size());
-	ofs.flush();
-	ofs.close();
-	logger->AddLog("[Gen exe] %s\n", utils::gbk_to_utf8(exepath.generic_string()).c_str());
+	if (!ofs) {
+		logger->AddLog("[Info] Failed to gen exe(File In Use) %s\n", utils::gbk_to_utf8(exepath.generic_string()).c_str());
+		return false;
+	} else {
+		ofs.write((const char*)exeOut.data(), exeOut.size());
+		ofs.flush();
+		ofs.close();
+		logger->AddLog("[Gen exe] %s\n", utils::gbk_to_utf8(exepath.generic_string()).c_str());
+		return true;
+	}
 }
 
 static void AnalysisBin()
@@ -260,7 +307,6 @@ static void ShowSubTitle(const char* title)
 	ImGuiDCYMargin(10);
 }
 
-
 void ShowBinGenWindow(bool* p_open)
 {
 	ImGuiWindowFlags window_flags = 0;
@@ -270,11 +316,11 @@ void ShowBinGenWindow(bool* p_open)
 	}
 
 	bool show_alert_export_success = false;
+	bool show_alert_file_in_use = false;
 	bool show_alert_analysis_success = false;
 
 	const int cl = 200;
 	const float wv = 300.0f;
-	char bin[BIN_NAME_BUFF_MAX_SIZE] = { 0 };
 	char buf[7] = { 0 };
 	auto& c = bin_config;
 
@@ -292,8 +338,6 @@ void ShowBinGenWindow(bool* p_open)
 	const combo_item upgrade_type_items[] = {
 		{"APP ONLY", UPGRADE_TYPE_APP_ONLY},
 		{"PLATFORM + APP", UPGRADE_TYPE_PLATFORM_APP},
-		{"PLATFORM + BOOT", UPGRADE_TYPE_PLATFORM_BOOT},
-		{"PLATFORM + BOOT + APP", UPGRADE_TYPE_PLATFORM_BOOT_APP}
 	};
 
 	const combo_item encryption_type_items[] = {
@@ -311,8 +355,6 @@ void ShowBinGenWindow(bool* p_open)
 
 	if (c.upgrade_type == UPGRADE_TYPE_APP_ONLY)				upgrade_type_idx = 0;
 	else if (c.upgrade_type == UPGRADE_TYPE_PLATFORM_APP)		upgrade_type_idx = 1;
-	else if (c.upgrade_type == UPGRADE_TYPE_PLATFORM_BOOT)		upgrade_type_idx = 2;
-	else if (c.upgrade_type == UPGRADE_TYPE_PLATFORM_BOOT_APP)	upgrade_type_idx = 3;
 	else														upgrade_type_idx = 0;
 
 	if (c.encryption_type == BIN_ENCRYPTION_TYPE_XOR)			encryption_type_idx = 0;
@@ -362,8 +404,8 @@ void ShowBinGenWindow(bool* p_open)
 		ImGui::InputScalar("##BLOCK_SIZE", ImGuiDataType_U16, &c.block_size, NULL, "%u");
 		if (c.block_size < 12) c.block_size = 12;
 		if (c.block_size > 8192) c.block_size = 8192;
-		if (c.in_size == 0) c.block_num = 0;
-		else c.block_num = (c.in_size - 1) / c.block_size + 1;
+		if (c.out_data.size() == 0) c.block_num = 0;
+		else c.block_num = (c.out_data.size() - 1) / c.block_size + 1;
 		ImGui::SameLine();
 		utils::HelpMarker("Range: between 12 and 8192 bytes.");
 
@@ -404,7 +446,7 @@ void ShowBinGenWindow(bool* p_open)
 					check_type_idx = n;
 					c.check_type = check_type_items[n].value;
 
-					CalcCrc();
+					CalcCRC();
 				}
 
 				if (is_selected) {
@@ -414,7 +456,7 @@ void ShowBinGenWindow(bool* p_open)
 			ImGui::EndCombo();
 		}
 		ImGui::SameLine();
-		ImGui::Text("[%08X]", c.in_crc);
+		ImGui::Text("[%08X]", c.out_data_crc);
 		ImGui::SameLine();
 		utils::HelpMarker("Used for verifying the original IAP bin.");
 	}
@@ -493,7 +535,7 @@ void ShowBinGenWindow(bool* p_open)
 	{
 		ImGui::Text("Configure related options during the upgrade process of the generated tool named \"iap.exe\".");
 
-		static ImGuiTableFlags flags = ImGuiTableFlags_BordersV | ImGuiTableFlags_BordersOuterH | ImGuiTableFlags_RowBg | ImGuiTableFlags_NoBordersInBody;
+		ImGuiTableFlags flags = ImGuiTableFlags_BordersV | ImGuiTableFlags_BordersOuterH | ImGuiTableFlags_RowBg | ImGuiTableFlags_NoBordersInBody;
 
 		if (ImGui::BeginTable("vprid", 4, flags))
 		{
@@ -513,15 +555,15 @@ void ShowBinGenWindow(bool* p_open)
 			ImGui::TableNextColumn();
 			ImGui::InputTextEx("##BOOT_RID", NULL, exe_config.tbrid, sizeof(exe_config.tbrid), ImVec2(100.0f, 0.0f), ImGuiInputTextFlags_CharsHexadecimal | ImGuiInputTextFlags_CharsUppercase);
 
-			ImGui::TableNextRow();
-			ImGui::TableNextColumn();
-			ImGui::Text("APP");
-			ImGui::TableNextColumn();
-			ImGui::InputTextEx("##APP_VID", NULL, exe_config.tavid, sizeof(exe_config.tavid), ImVec2(100.0f, 0.0f), ImGuiInputTextFlags_CharsHexadecimal | ImGuiInputTextFlags_CharsUppercase);
-			ImGui::TableNextColumn();
-			ImGui::InputTextEx("##APP_PID", NULL, exe_config.tapid, sizeof(exe_config.tapid), ImVec2(100.0f, 0.0f), ImGuiInputTextFlags_CharsHexadecimal | ImGuiInputTextFlags_CharsUppercase);
-			ImGui::TableNextColumn();
-			ImGui::InputTextEx("##APP_RID", NULL, exe_config.tarid, sizeof(exe_config.tarid), ImVec2(100.0f, 0.0f), ImGuiInputTextFlags_CharsHexadecimal | ImGuiInputTextFlags_CharsUppercase);
+			//ImGui::TableNextRow();
+			//ImGui::TableNextColumn();
+			//ImGui::Text("APP");
+			//ImGui::TableNextColumn();
+			//ImGui::InputTextEx("##APP_VID", NULL, exe_config.tavid, sizeof(exe_config.tavid), ImVec2(100.0f, 0.0f), ImGuiInputTextFlags_CharsHexadecimal | ImGuiInputTextFlags_CharsUppercase);
+			//ImGui::TableNextColumn();
+			//ImGui::InputTextEx("##APP_PID", NULL, exe_config.tapid, sizeof(exe_config.tapid), ImVec2(100.0f, 0.0f), ImGuiInputTextFlags_CharsHexadecimal | ImGuiInputTextFlags_CharsUppercase);
+			//ImGui::TableNextColumn();
+			//ImGui::InputTextEx("##APP_RID", NULL, exe_config.tarid, sizeof(exe_config.tarid), ImVec2(100.0f, 0.0f), ImGuiInputTextFlags_CharsHexadecimal | ImGuiInputTextFlags_CharsUppercase);
 
 			utils::ValidateU16Text(exe_config.tbvid, exe_config.boot_vid);
 			utils::ValidateU16Text(exe_config.tbpid, exe_config.boot_pid);
@@ -610,115 +652,208 @@ void ShowBinGenWindow(bool* p_open)
 
 	if (ImGui::CollapsingHeader("Choose Bin", ImGuiTreeNodeFlags_DefaultOpen))
 	{
-		strcpy(bin, c.in_name);
-		//=================================================================================
-		// Input File Path
-		//=================================================================================
-		ImGui::Text("Bin");
-		ImGui::SameLine();
-		ImGuiDCXAxisAlign(cl);
-		ImGui::InputTextEx("##BIN_FILE_NAME", "", c.in_name, sizeof(c.in_name), ImVec2(600, 0.0f), 0);
+		ImGuiTableFlags flags = ImGuiTableFlags_BordersV | ImGuiTableFlags_BordersOuterH | ImGuiTableFlags_RowBg | ImGuiTableFlags_NoBordersInBody;
 
+		float al = 100.0f;
+		float lo = 13.0f;
 
-		//=================================================================================
-		// Tip
-		//=================================================================================
-		if (c.in_name[0] != '\0')
+		if (ImGui::BeginTable("bin_choose_table", 3, flags))
 		{
-			ImGui::SameLine();
-			if (c.in_size == 0) {
-				ImGui::Text("Error: file not exists");
-			}
-			else {
-				ImGui::Text("OK. file size = %dB (padding:%dB)", c.in_size, c.in_data.size());
-			}
-		}
-		//=================================================================================
-		// File Dailog
-		//=================================================================================
-		if (ifd::FileDialog::Instance().IsDone("BIN_OPEN")) {
-			if (ifd::FileDialog::Instance().HasResult()) {
-				const std::vector<std::filesystem::path>& res = ifd::FileDialog::Instance().GetResults();
-				if (res.size() > 0) {
-					std::filesystem::path path = res[0];
-					std::string pathStr = path.u8string();
-					strcpy(c.in_name, pathStr.c_str());
+			ImGui::TableSetupColumn("Name", ImGuiTableColumnFlags_WidthFixed, 178.0f);
+			ImGui::TableSetupColumn("Load Address", ImGuiTableColumnFlags_WidthFixed, 120.0f);
+			ImGui::TableSetupColumn("File");
+			ImGui::TableHeadersRow();
+
+			// Platform Bin
+			if (c.upgrade_type == upgrade_type_e::UPGRADE_TYPE_PLATFORM_APP) {
+				char bin[BIN_NAME_BUFF_MAX_SIZE] = { 0 };
+				strcpy(bin, c.platform.name);
+				ImGui::TableNextRow();
+				ImGui::TableNextColumn();
+				ImGui::Text("Platform");
+				ImGui::TableNextColumn();
+				ImGui::InputTextEx("h##PLATFORM_LOAD_ADDR_INPUT", NULL, c.platform.load_address, sizeof(c.platform.load_address), ImVec2(100.0f, 0.0f), ImGuiInputTextFlags_CharsHexadecimal | ImGuiInputTextFlags_CharsUppercase);
+				utils::ValidateU32Text(c.platform.load_address, c.platform.load_addr);
+				ImGui::TableNextColumn();
+				//=================================================================================
+				// Input File Path
+				//=================================================================================
+				ImGui::InputTextEx("##PLATFORM_BIN_FILE_NAME", "", c.platform.name, sizeof(c.platform.name), ImVec2(300, 0.0f), 0);
+				//=================================================================================
+				// Bin Select
+				//=================================================================================
+				ImGui::SameLine();
+				if (ImGui::Button("Open##PLATFORM_BIN_OPEN_BTN"))
+					ifd::FileDialog::Instance().Open("PLATFORM_BIN_OPEN", "Choose bin", "bin {.bin},.*", false);
+				//=================================================================================
+				// File Dailog
+				//=================================================================================
+				if (ifd::FileDialog::Instance().IsDone("PLATFORM_BIN_OPEN")) {
+					if (ifd::FileDialog::Instance().HasResult()) {
+						const std::vector<std::filesystem::path>& res = ifd::FileDialog::Instance().GetResults();
+						if (res.size() > 0) {
+							std::filesystem::path path = res[0];
+							std::string pathStr = path.u8string();
+							strcpy(c.platform.name, pathStr.c_str());
+						}
+					}
+					ifd::FileDialog::Instance().Close();
+				}
+				//=================================================================================
+				// Tip
+				//=================================================================================
+				if (c.platform.name[0] != '\0')
+				{
+					ImGui::SameLine();
+					if (c.platform.size == 0) {
+						ImGui::Text("Error: file not exists");
+					}
+					else {
+						ImGui::Text("OK. file size = %dB (padding:%dB)", c.platform.size, c.platform.data.size());
+					}
+				}
+				strcpy(c.platform.name_gbk, utils::utf8_to_gbk(c.platform.name).c_str());
+				//=================================================================================
+				// Get File Size
+				//=================================================================================
+				auto path = c.platform.name_gbk;
+				c.platform.size = std::filesystem::is_regular_file(path) ?
+					static_cast<uint32_t>(std::filesystem::file_size(path)) : 0;
+				//=================================================================================
+				// Reload File Binary Data | aligned to 16
+				//=================================================================================
+				if (c.platform.size != 0 && (c.platform.data.size() == 0 || strcmp(bin, c.platform.name) != 0)) {
+					ReloadPlatform();
 				}
 			}
-			ifd::FileDialog::Instance().Close();
+
+			// App Bin
+			{
+				char bin[BIN_NAME_BUFF_MAX_SIZE] = { 0 };
+				strcpy(bin, c.app.name);
+				ImGui::TableNextRow();
+				ImGui::TableNextColumn();
+				ImGui::Text("App");
+				ImGui::TableNextColumn();
+				ImGui::InputTextEx("h##APP_LOAD_ADDR_INPUT", NULL, c.app.load_address, sizeof(c.app.load_address), ImVec2(100.0f, 0.0f), ImGuiInputTextFlags_CharsHexadecimal | ImGuiInputTextFlags_CharsUppercase);
+				utils::ValidateU32Text(c.app.load_address, c.app.load_addr);
+				ImGui::TableNextColumn();
+				//=================================================================================
+				// Input File Path
+				//=================================================================================
+				ImGui::InputTextEx("##APP_BIN_FILE_NAME", "", c.app.name, sizeof(c.app.name), ImVec2(300, 0.0f), 0);
+				//=================================================================================
+				// Bin Select
+				//=================================================================================
+				ImGui::SameLine();
+				if (ImGui::Button("Open##APP_BIN_OPEN_BTN"))
+					ifd::FileDialog::Instance().Open("APP_BIN_OPEN", "Choose bin", "bin {.bin},.*", false);
+				//=================================================================================
+				// File Dailog
+				//=================================================================================
+				if (ifd::FileDialog::Instance().IsDone("APP_BIN_OPEN")) {
+					if (ifd::FileDialog::Instance().HasResult()) {
+						const std::vector<std::filesystem::path>& res = ifd::FileDialog::Instance().GetResults();
+						if (res.size() > 0) {
+							std::filesystem::path path = res[0];
+							std::string pathStr = path.u8string();
+							strcpy(c.app.name, pathStr.c_str());
+						}
+					}
+					ifd::FileDialog::Instance().Close();
+				}
+				//=================================================================================
+				// Tip
+				//=================================================================================
+				if (c.app.name[0] != '\0')
+				{
+					ImGui::SameLine();
+					if (c.app.size == 0) {
+						ImGui::Text("Error: file not exists");
+					}
+					else {
+						ImGui::Text("OK. file size = %dB (padding:%dB)", c.app.size, c.app.data.size());
+					}
+				}
+				strcpy(c.app.name_gbk, utils::utf8_to_gbk(c.app.name).c_str());
+				//=================================================================================
+				// Get File Size
+				//=================================================================================
+				auto path = c.app.name_gbk;
+				c.app.size = std::filesystem::is_regular_file(path) ?
+					static_cast<uint32_t>(std::filesystem::file_size(path)) : 0;
+				//=================================================================================
+				// Reload File Binary Data | aligned to 16
+				//=================================================================================
+				if (c.app.size != 0 && (c.app.data.size() == 0 || strcmp(bin, c.app.name) != 0)) {
+					ReloadApp();
+				}
+			}
+
+			ImGui::EndTable();
 		}
+	}
 
-		strcpy(c.in_name_gbk, utils::utf8_to_gbk(c.in_name).c_str());
-		//=================================================================================
-		// Get File Size
-		//=================================================================================
-		auto path = c.in_name_gbk;
-		c.in_size = std::filesystem::is_regular_file(path) ?
-			static_cast<uint32_t>(std::filesystem::file_size(path)) : 0;
+	ImGui::Separator();
 
-		//=================================================================================
-		// Reload File Binary Data
-		//=================================================================================
-		if (c.in_size != 0 && (c.in_data.size() == 0 || strcmp(bin, c.in_name) != 0))
-			ReloadInFile();
+	ImGui::Text("Export Directory");
+	ImGui::SameLine();
+	ImGuiDCXAxisAlign(cl);
+	ImGui::Text(utils::gbk_to_utf8(export_dir.generic_string()).c_str());
 
-		ImGui::Text("Export Directory");
-		ImGui::SameLine();
-		ImGuiDCXAxisAlign(cl);
-		ImGui::Text(utils::gbk_to_utf8(export_dir.generic_string()).c_str());
 
-		//=================================================================================
-		// Bin Select
-		//=================================================================================
-		if (ImGui::Button("Import Bin"))
-			ifd::FileDialog::Instance().Open("BIN_OPEN", "Choose bin", "bin {.bin},.*", false);
+	if (!IsMergeable())
+		ImGui::BeginDisabled();
+	if (ImGui::Button("Export bin"))
+	{
+		if (!std::filesystem::exists(export_dir))
+			export_dir = DefaultExportDir();
 
-		if (c.in_size == 0)
-			ImGui::BeginDisabled();
-		ImGui::SameLine();
-		if (ImGui::Button("Export bin"))
+		if (GenerateBin())
 		{
-			if (!std::filesystem::exists(export_dir))
-				export_dir = DefaultExportDir();
-
-			GenerateBin();
 			show_alert_export_success = true;
 		}
-		ImGui::SameLine();
-		if (ImGui::Button("Export to specified directory"))
+		else 
 		{
-			std::cout << export_dir.generic_string() << std::endl;
-			ifd::FileDialog::Instance().Open("ExportBinFile", "Choose export directory", "", false, utils::gbk_to_utf8(export_dir.generic_string()));
+			show_alert_file_in_use = true;
 		}
-		if (c.in_size == 0)
-			ImGui::EndDisabled();
+	}
+	ImGui::SameLine();
+	if (ImGui::Button("Export to specified directory"))
+	{
+		std::cout << export_dir.generic_string() << std::endl;
+		ifd::FileDialog::Instance().Open("ExportBinFile", "Choose export directory", "", false, utils::gbk_to_utf8(export_dir.generic_string()));
+	}
+	if (!IsMergeable())
+		ImGui::EndDisabled();
 
-		if (!std::filesystem::exists(export_path))
-			ImGui::BeginDisabled();
-		ImGui::SameLine();
-		if (ImGui::Button("Analysis bin"))
-		{
-			AnalysisBin();
+	if (!std::filesystem::exists(export_path))
+		ImGui::BeginDisabled();
+	ImGui::SameLine();
+	if (ImGui::Button("Analysis bin"))
+	{
+		AnalysisBin();
+		show_alert_analysis_success = true;
+	}
+	if (!std::filesystem::exists(export_path))
+		ImGui::EndDisabled();
+
+	if (ifd::FileDialog::Instance().IsDone("ExportBinFile")) {
+		if (ifd::FileDialog::Instance().HasResult()) {
+			std::string res = utils::utf8_to_gbk(ifd::FileDialog::Instance().GetResult().u8string());
+			export_dir = std::filesystem::path(res);
+
+			GenerateBin();
+
 			show_alert_analysis_success = true;
 		}
-		if (!std::filesystem::exists(export_path))
-			ImGui::EndDisabled();
-
-		if (ifd::FileDialog::Instance().IsDone("ExportBinFile")) {
-			if (ifd::FileDialog::Instance().HasResult()) {
-				std::string res = utils::utf8_to_gbk(ifd::FileDialog::Instance().GetResult().u8string());
-				export_dir = std::filesystem::path(res);
-
-				GenerateBin();
-
-				show_alert_analysis_success = true;
-			}
-			ifd::FileDialog::Instance().Close();
-		}
+		ifd::FileDialog::Instance().Close();
 	}
 
 	utils::Alert(show_alert_export_success, "Message##m1", "Export bin finished.");
 	utils::Alert(show_alert_analysis_success, "Message##m2", "Analysis bin finished.");
+	utils::Alert(show_alert_file_in_use, "Message##m3", "Export failed because the file is in use.");
+	
 
 
 	ImGui::End();

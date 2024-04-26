@@ -322,7 +322,6 @@ uint16_t iap_transfer_read(uint8_t* data, bool* isFirst)
 {
 	uint8_t* buf = hid_report_buf + 1;
 	uint16_t len = 0;
-	int actualLen = hid_get_report(buf, IAP_USB_HID_REPORT_CONTENT_SIZE);
 
 	if (buf[0] != IAP_PRO_TRANSFER_HEADER)
 		throw transfer_pack_exception();

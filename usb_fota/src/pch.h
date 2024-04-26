@@ -2,7 +2,7 @@
 
 #include <iostream>
 
-#define APP_TITLE           "Ingchips USB IAP tool"
+#define APP_TITLE           "Ingchips USB IAP tool (2nd Bootloader)"
 #define DEFAULT_FONT		"c:\\Windows\\Fonts\\msyh.ttc"
 
 #define EP_MAX_SIZE  64

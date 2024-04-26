@@ -32,11 +32,15 @@ void Saveini(std::filesystem::path ini_path)
 	out << "encryption_xor=" << c.encryption_xor << std::endl;
 	out << "encryption_key=" << c.encryption_key << std::endl;
 	out << "encryption_iv=" << c.encryption_iv << std::endl;
-	out << "load_address=" << c.load_address << std::endl;
 	out << std::endl;
 
 	out << "[app]" << std::endl;
-	out << "name=" << c.in_name_gbk << std::endl;
+	out << "name=" << c.app.name_gbk << std::endl;
+	out << "load_address=" << c.app.load_address << std::endl;
+
+	out << "[platform]" << std::endl;
+	out << "name=" << c.platform.name_gbk << std::endl;
+	out << "load_address=" << c.platform.load_address << std::endl;
 	out << std::endl;
 
 	out.close();
@@ -63,11 +67,15 @@ void Loadini(std::filesystem::path ini_path)
 	strcpy(c.encryption_key,  reader.Get("option", "encryption_key", "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF").c_str());
 	strcpy(c.encryption_iv,   reader.Get("option", "encryption_iv",  "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF").c_str());
 
-	strcpy(c.load_address, reader.Get("option", "load_address", "0202A000").c_str());
-	c.load_addr = utils::htoi_32(c.load_address);
+	strcpy(c.platform.name_gbk, reader.Get("platform", "name", "").c_str());
+	strcpy(c.platform.name, utils::gbk_to_utf8(c.platform.name_gbk).c_str());
+	strcpy(c.platform.load_address, reader.Get("platform", "load_address", "02003000").c_str());
+	c.platform.load_addr = utils::htoi_32(c.platform.load_address);
 
-	strcpy(c.in_name_gbk, reader.Get("app", "name", "").c_str());
-	strcpy(c.in_name, utils::gbk_to_utf8(c.in_name_gbk).c_str());
+	strcpy(c.app.name_gbk, reader.Get("app", "name", "").c_str());
+	strcpy(c.app.name, utils::gbk_to_utf8(c.app.name_gbk).c_str());
+	strcpy(c.app.load_address, reader.Get("app", "load_address", "0202A000").c_str());
+	c.app.load_addr = utils::htoi_32(c.app.load_address);
 }
 
 void Exportbin(std::filesystem::path export_bin_path)
@@ -77,7 +85,7 @@ void Exportbin(std::filesystem::path export_bin_path)
 	unsigned char header[128] = { 0 };
 	memset(header, 0xFF, 128);
 
-	if (c.in_size == 0)
+	if ((c.app.size) == 0)
 		return;
 
 	memcpy(header + i, c.identify, 8);				i += 8;
@@ -91,14 +99,14 @@ void Exportbin(std::filesystem::path export_bin_path)
 	header[i] = c.check_type;
 	if (c.check_type == CHECK_TYPE_CRC)
 	{
-		uint16_t crc16 = utils::crc16_modbus(bin_config.in_data.data(), (uint32_t)bin_config.in_data.size());
+		uint16_t crc16 = utils::crc16_modbus(c.out_data.data(), (uint32_t)c.out_data.size());
 		header[i + 1] = 2;
 		header[i + 2] = crc16 & 0xFF;
 		header[i + 3] = crc16 >> 8;
 	}
 	else if (c.check_type == CHECK_TYPE_SUM)
 	{
-		uint16_t sum = utils::sum_16(bin_config.in_data.data(), (uint32_t)bin_config.in_data.size());
+		uint16_t sum = utils::sum_16(c.out_data.data(), (uint32_t)c.out_data.size());
 		header[i + 1] = 2;
 		header[i + 2] = sum & 0xFF;
 		header[i + 3] = sum >> 8;
@@ -142,14 +150,14 @@ void Exportbin(std::filesystem::path export_bin_path)
 		i += 34;
 	}
 	//==============================================================
-	header[i++] = (c.load_addr >> 0 ) & 0xFF;
-	header[i++] = (c.load_addr >> 8 ) & 0xFF;
-	header[i++] = (c.load_addr >> 16) & 0xFF;
-	header[i++] = (c.load_addr >> 24) & 0xFF;
-	header[i++] = (c.in_size >> 0 ) & 0xFF;
-	header[i++] = (c.in_size >> 8 ) & 0xFF;
-	header[i++] = (c.in_size >> 16) & 0xFF;
-	header[i++] = (c.in_size >> 24) & 0xFF;
+	header[i++] = (c.out_data_load_addr >> 0 ) & 0xFF;
+	header[i++] = (c.out_data_load_addr >> 8 ) & 0xFF;
+	header[i++] = (c.out_data_load_addr >> 16) & 0xFF;
+	header[i++] = (c.out_data_load_addr >> 24) & 0xFF;
+	header[i++] = (c.out_data.size() >> 0 ) & 0xFF;
+	header[i++] = (c.out_data.size() >> 8 ) & 0xFF;
+	header[i++] = (c.out_data.size() >> 16) & 0xFF;
+	header[i++] = (c.out_data.size() >> 24) & 0xFF;
 	//==============================================================
 	i += 12;	//Reverse
 	//==============================================================
@@ -163,15 +171,15 @@ void Exportbin(std::filesystem::path export_bin_path)
 	out.write((char*)header, 128);
 	if (c.encryption_enable)
 	{
-		std::vector<uint8_t> enc_buf(c.in_data.size());
+		std::vector<uint8_t> enc_buf(c.out_data.size());
 
 		if (c.encryption_type == BIN_ENCRYPTION_TYPE_XOR)
 		{
-			utils::xor_encrypt(c.enc_xor, c.in_data.data(), c.in_data.size(), enc_buf.data());
+			utils::xor_encrypt(c.enc_xor, c.out_data.data(), c.out_data.size(), enc_buf.data());
 		}
 		else if (c.encryption_type == BIN_ENCRYPTION_TYPE_AES)
 		{
-			memcpy(enc_buf.data(), c.in_data.data(), c.in_data.size());
+			memcpy(enc_buf.data(), c.out_data.data(), c.out_data.size());
 			utils::aes128_cbc_encrypt(c.enc_key, c.enc_iv, enc_buf.data(), enc_buf.size());
 		}
 
@@ -179,7 +187,7 @@ void Exportbin(std::filesystem::path export_bin_path)
 	}
 	else
 	{
-		out.write((char*)c.in_data.data(), c.in_data.size());
+		out.write((char*)c.out_data.data(), c.out_data.size());
 	}
 	out.close();
 }
@@ -235,7 +243,7 @@ void Alsbin(std::filesystem::path bin_path)
 			log16("[Decryption] bin decrypt first 16bytes:", decrypted_bin.data());
 		}
 
-		if (memcmp(bin_config.in_data.data(), decrypted_bin.data(), decrypted_bin.size()) == 0)
+		if (memcmp(bin_config.out_data.data(), decrypted_bin.data(), decrypted_bin.size()) == 0)
 		{
 			logger->AddLog("[Decryption] Success!\n");
 		}
