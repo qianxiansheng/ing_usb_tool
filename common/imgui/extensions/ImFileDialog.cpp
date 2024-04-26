@@ -352,7 +352,7 @@ namespace ifd {
 
 		struct stat attr;
 		stat(path.u8string().c_str(), &attr);
-		DateModified = attr.st_ctime;
+		DateModified = attr.st_mtime;
 
 		HasIconPreview = false;
 		IconPreview = nullptr;
