@@ -24,6 +24,7 @@ namespace utils {
 	uint32_t htoi_32(const char* c);
 	void ValidateU8Text(char* text, uint8_t& v);
 	void ValidateU16Text(char* text, uint16_t& v);
+	void ValidateU32Text(char* text, uint32_t& v);
 	void ValidateIntText(char* text, uint32_t& v);
 	void ValidateDataText(char* text, uint8_t* data, size_t& size);
 	void ValidateHex16ByteText(char* text, uint8_t* data);
@@ -44,12 +45,13 @@ namespace utils {
 	void my_sleep(unsigned long milliseconds);
 	struct tm time_to_tm(time_t as_time_t);
 
+	long long get_current_system_time_us();
 	long long get_current_system_time_ms();
 	long long get_current_system_time_s();
 
-	uint16_t crc16_modbus(uint8_t* data, uint32_t length);
-	uint8_t bcc(uint8_t* data, uint32_t length);
-	uint16_t sum_16(uint8_t* p1, uint32_t len);
+	uint16_t crc16_modbus(const uint8_t* data, uint32_t length);
+	uint8_t bcc(const uint8_t* data, uint32_t length);
+	uint16_t sum_16(const uint8_t* p1, uint32_t len);
 
 	void xor_encrypt(const uint8_t* xor_vector, const uint8_t* data, size_t size, uint8_t* outData);
 	void xor_decrypt(const uint8_t* xor_vector, const uint8_t* data, size_t size, uint8_t* outData);

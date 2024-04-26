@@ -206,6 +206,22 @@ void utils::ValidateU16Text(char* text, uint16_t& v)
 		v = utils::htoi_16(text);
 	}
 }
+void utils::ValidateU32Text(char* text, uint32_t& v)
+{
+	// Load address
+	if (text[0] == '\0') {
+		v = 0;
+		strcpy(text, "00000000");
+	}
+	else {
+		size_t len = strlen(text);
+		for (size_t i = 0; i < 8; ++i)
+			text[7 - i] = (i < len) ? text[len - 1 - i] : '0';
+		text[8] = '\0';
+		v = utils::htoi_32(text);
+	}
+}
+
 void utils::ValidateIntText(char* text, uint32_t& v)
 {
 	// Load address
@@ -375,6 +391,13 @@ struct tm utils::time_to_tm(time_t as_time_t)
 	return tm;
 }
 
+long long utils::get_current_system_time_us()
+{
+	std::chrono::system_clock::time_point time_point_now = std::chrono::system_clock::now();
+	std::chrono::system_clock::duration duration_since_epoch = time_point_now.time_since_epoch();
+	return std::chrono::duration_cast<std::chrono::microseconds>(duration_since_epoch).count();
+}
+
 long long utils::get_current_system_time_ms()
 {
 	std::chrono::system_clock::time_point time_point_now = std::chrono::system_clock::now();
@@ -388,7 +411,7 @@ long long utils::get_current_system_time_s()
 	return std::chrono::duration_cast<std::chrono::seconds>(duration_since_epoch).count();
 }
 
-uint16_t utils::crc16_modbus(uint8_t* data, uint32_t length)
+uint16_t utils::crc16_modbus(const uint8_t* data, uint32_t length)
 {
 	uint8_t i;
 	uint16_t crc = 0xffff;        // Initial value
@@ -406,7 +429,7 @@ uint16_t utils::crc16_modbus(uint8_t* data, uint32_t length)
 	return (crc << 8) | (crc >> 8);
 }
 
-uint8_t utils::bcc(uint8_t* data, uint32_t length)
+uint8_t utils::bcc(const uint8_t* data, uint32_t length)
 {
 	uint8_t bcc = 0;
 	while (length--)
@@ -414,7 +437,7 @@ uint8_t utils::bcc(uint8_t* data, uint32_t length)
 	return bcc;
 }
 
-uint16_t utils::sum_16(uint8_t* p1, uint32_t len)
+uint16_t utils::sum_16(const uint8_t* p1, uint32_t len)
 {
 	uint16_t bcc = 0;
 	for (; len > 0; len--)
