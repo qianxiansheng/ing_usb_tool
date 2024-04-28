@@ -282,7 +282,9 @@ static bool GenerateBin()
 			}
 		}
 		Mergebin();
-		c.block_num = (static_cast<uint16_t>(c.out_data.size()) - 1) / c.block_size + 1;
+
+		size_t block_num = (c.out_data.size() - 1) / static_cast<size_t>(c.block_size) + 1;
+		c.block_num = static_cast<uint16_t>(block_num);
 	}
 
 
@@ -538,8 +540,6 @@ void ShowBinGenWindow(bool* p_open)
 		ImGui::InputScalar("##BLOCK_SIZE", ImGuiDataType_U16, &c.block_size, NULL, "%u");
 		if (c.block_size < 12) c.block_size = 12;
 		if (c.block_size > 8192) c.block_size = 8192;
-		if (c.out_data.size() == 0) c.block_num = 0;
-		else c.block_num = (static_cast<uint16_t>(c.out_data.size()) - 1) / c.block_size + 1;
 		ImGui::SameLine();
 		utils::HelpMarker("Range: between 12 and 8192 bytes.");
 
