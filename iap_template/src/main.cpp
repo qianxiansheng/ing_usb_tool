@@ -45,6 +45,9 @@ std::filesystem::path selfName;
 
 std::vector<uint8_t> iap_bin;
 
+std::string iap_bin_soft_version;
+std::string iap_bin_hard_version;
+
 extern iap_config_t iap_config;
 
 ImVec4 clear_color = ImVec4(0.35f, 0.35f, 0.35f, 1.00f);
@@ -171,6 +174,10 @@ static void SearchDeviceBootOrAPP(uint16_t bvid, uint16_t bpid, uint16_t avid, u
 	}
 }
 
+static float takeout_float(uint8_t* buf)
+{
+	return *(float*)buf;
+}
 static uint32_t takeout_32_little(uint8_t* buf)
 {
 	return (buf[0]) | (buf[1] << 8) | (buf[2] << 16) | (buf[3] << 24);
@@ -223,6 +230,30 @@ static void LoadIconTexture()
 	iconTextureID = reinterpret_cast<void*>(static_cast<uintptr_t>(textureID));
 }
 
+static ImVec4 dark(const ImVec4 v, float n)
+{
+	return ImVec4(
+		ImMax(0.0f, v.x - n),
+		ImMax(0.0f, v.y - n),
+		ImMax(0.0f, v.z - n),
+		ImMax(0.0f, v.w - n)
+	);
+}
+
+static void LoadStyle()
+{
+	auto& style = ImGui::GetStyle();
+	style.Colors[ImGuiCol_Text] = iap_config.color0;
+	style.Colors[ImGuiCol_WindowBg] = iap_config.color1;
+	style.Colors[ImGuiCol_Button] = iap_config.color2;
+	style.Colors[ImGuiCol_ButtonHovered] = iap_config.color3;
+	style.Colors[ImGuiCol_ButtonActive] = iap_config.color4;
+	style.Colors[ImGuiCol_PlotHistogram] = iap_config.color5;
+	style.Colors[ImGuiCol_FrameBg] = iap_config.color6;
+	style.Colors[ImGuiCol_PopupBg] = iap_config.color1;
+	style.Colors[ImGuiCol_TitleBgActive] = dark(iap_config.color1, 0.1f);
+}
+
 static void LoadData()
 {
 	uint32_t size = (uint32_t)std::filesystem::file_size(selfName);
@@ -241,7 +272,58 @@ static void LoadData()
 	{
 		k -= 4;
 		N = takeout_32_little(&self_data[k]);
-		N_ = self_size - N - 38;
+		N_ = self_size - N - 38 - 160;
+
+		k -= 4; iap_config.color9.w = takeout_float(&self_data[k]);
+		k -= 4; iap_config.color9.z = takeout_float(&self_data[k]);
+		k -= 4; iap_config.color9.y = takeout_float(&self_data[k]);
+		k -= 4; iap_config.color9.x = takeout_float(&self_data[k]);
+
+		k -= 4; iap_config.color8.w = takeout_float(&self_data[k]);
+		k -= 4; iap_config.color8.z = takeout_float(&self_data[k]);
+		k -= 4; iap_config.color8.y = takeout_float(&self_data[k]);
+		k -= 4; iap_config.color8.x = takeout_float(&self_data[k]);
+
+		k -= 4; iap_config.color7.w = takeout_float(&self_data[k]);
+		k -= 4; iap_config.color7.z = takeout_float(&self_data[k]);
+		k -= 4; iap_config.color7.y = takeout_float(&self_data[k]);
+		k -= 4; iap_config.color7.x = takeout_float(&self_data[k]);
+
+		k -= 4; iap_config.color6.w = takeout_float(&self_data[k]);
+		k -= 4; iap_config.color6.z = takeout_float(&self_data[k]);
+		k -= 4; iap_config.color6.y = takeout_float(&self_data[k]);
+		k -= 4; iap_config.color6.x = takeout_float(&self_data[k]);
+
+		k -= 4; iap_config.color5.w = takeout_float(&self_data[k]);
+		k -= 4; iap_config.color5.z = takeout_float(&self_data[k]);
+		k -= 4; iap_config.color5.y = takeout_float(&self_data[k]);
+		k -= 4; iap_config.color5.x = takeout_float(&self_data[k]);
+
+		k -= 4; iap_config.color4.w = takeout_float(&self_data[k]);
+		k -= 4; iap_config.color4.z = takeout_float(&self_data[k]);
+		k -= 4; iap_config.color4.y = takeout_float(&self_data[k]);
+		k -= 4; iap_config.color4.x = takeout_float(&self_data[k]);
+
+		k -= 4; iap_config.color3.w = takeout_float(&self_data[k]);
+		k -= 4; iap_config.color3.z = takeout_float(&self_data[k]);
+		k -= 4; iap_config.color3.y = takeout_float(&self_data[k]);
+		k -= 4; iap_config.color3.x = takeout_float(&self_data[k]);
+
+		k -= 4; iap_config.color2.w = takeout_float(&self_data[k]);
+		k -= 4; iap_config.color2.z = takeout_float(&self_data[k]);
+		k -= 4; iap_config.color2.y = takeout_float(&self_data[k]);
+		k -= 4; iap_config.color2.x = takeout_float(&self_data[k]);
+
+		k -= 4; iap_config.color1.w = takeout_float(&self_data[k]);
+		k -= 4; iap_config.color1.z = takeout_float(&self_data[k]);
+		k -= 4; iap_config.color1.y = takeout_float(&self_data[k]);
+		k -= 4; iap_config.color1.x = takeout_float(&self_data[k]);
+
+		k -= 4; iap_config.color0.w = takeout_float(&self_data[k]);
+		k -= 4; iap_config.color0.z = takeout_float(&self_data[k]);
+		k -= 4; iap_config.color0.y = takeout_float(&self_data[k]);
+		k -= 4; iap_config.color0.x = takeout_float(&self_data[k]);
+
 		k -= 4; iap_config.readAckTimeout = takeout_32_little(&self_data[k]);
 		k -= 4; iap_config.searchDeviceTimeout = takeout_32_little(&self_data[k]);
 		k -= 4; iap_config.switchDelay = takeout_32_little(&self_data[k]);
@@ -269,10 +351,25 @@ static void LoadData()
 
 		iap_bin.resize(N_);
 		memcpy(iap_bin.data(), self_data + N, N_);
+
+		iap_bin_hard_version = std::string((char*)iap_bin.data() + 48, 6);
+		iap_bin_soft_version = std::string((char*)iap_bin.data() + 54, 6);
+
 		g_file_valid_flag = true;
 	}
 	else
 	{
+		iap_config.color0 = ImVec4(0, 0, 0, 1.0f);
+		iap_config.color1 = ImVec4(0.941176f, 0.941176f, 0.941176f, 1.0f);
+		iap_config.color2 = ImVec4(0.258824f, 0.588235f, 0.980392f, 0.4f);
+		iap_config.color3 = ImVec4(0.258824f, 0.588235f, 0.980392f, 1.0f);
+		iap_config.color4 = ImVec4(0.0588235f, 0.529412f, 0.980392f, 1.0f);
+		iap_config.color5 = ImVec4(0.901961f, 0.701961f, 0, 1.0f);
+		iap_config.color6 = ImVec4(1.0f, 1.0f, 1.0f, 1.0f);
+		iap_config.color7 = ImVec4(1.0f, 1.0f, 1.0f, 1.0f);
+		iap_config.color8 = ImVec4(1.0f, 1.0f, 1.0f, 1.0f);
+		iap_config.color9 = ImVec4(1.0f, 1.0f, 1.0f, 1.0f);
+
 		UIThreadPutEvent_LabelMessage("File corruption!\nPlease regenerate the upgrade tool.");
 		UIThreadPutEvent_AlertMessage("File corruption!\nPlease regenerate the upgrade tool.");
 		g_file_valid_flag = false;
@@ -281,7 +378,7 @@ static void LoadData()
 
 static void LoadData0()
 {
-	std::filesystem::path binName("C:\\Users\\leosh\\Desktop\\USB tool\\output\\INGIAP.bin");
+	std::filesystem::path binName("D:\\myResource\\work\\c++\\ing_usb_fota\\ing_usb_fota\\usb_fota\\output\\INGIAP.bin");
 	auto data = utils::readFileData(binName);
 
 	iap_config.readAckTimeout = 1000;
@@ -293,11 +390,23 @@ static void LoadData0()
 	iap_config.app_pid = 0x0102;
 	iap_config.app_vid = 0x36B0;
 	iap_config.boot_rid = 0x3F;
-	iap_config.boot_pid = 0x0101;
+	iap_config.boot_pid = 0x3002;
 	iap_config.boot_vid = 0x36B0;
+	iap_config.color0 = ImVec4(0, 0, 0, 1.0f);
+	iap_config.color1 = ImVec4(0.941176f, 0.941176f, 0.941176f, 1.0f);
+	iap_config.color2 = ImVec4(0.258824f, 0.588235f, 0.980392f, 0.4f);
+	iap_config.color3 = ImVec4(0.258824f, 0.588235f, 0.980392f, 1.0f);
+	iap_config.color4 = ImVec4(0.0588235f, 0.529412f, 0.980392f, 1.0f);
+	iap_config.color5 = ImVec4(0.901961f, 0.701961f, 0, 1.0f);
 
 	iap_bin = data;
+
+	iap_bin_hard_version = std::string((char*)iap_bin.data() + 48, 6);
+	iap_bin_soft_version = std::string((char*)iap_bin.data() + 54, 6);
+
 	g_file_valid_flag = true;
+
+	
 }
 
 extern IAPContext iap_ctx;
@@ -444,6 +553,9 @@ bool main_init(int argc, char* argv[])
 	// IAP bin data
 	LoadData();
 
+	// Style
+	LoadStyle();
+
 	// Icon data
 	LoadIconTexture();
 
@@ -465,10 +577,27 @@ void main_shutdown(void)
 static void ShowRootWindowProgress(void)
 {
 	ImVec2 contentRegionAvail = ImGui::GetContentRegionAvail();
+	ImGuiWindow* window = ImGui::GetCurrentWindow();
+	{
+		ImGui::BeginGroup();
+		{
+			ImGui::Image(iconTextureID, ImVec2(iconTextureWidth, iconTextureHeight));
+		}
+		ImGui::EndGroup();
+		ImGui::SameLine();
+		ImGui::BeginGroup();
+		{
+			float ih = ImGui::CalcTextSize("V").y * 3;
+			float th = ih > iconTextureHeight ? ih : iconTextureHeight;
 
-	ImGui::Text(label_message);
-
-	ImGui::Image(iconTextureID, ImVec2(iconTextureWidth, iconTextureHeight));
+			ImVec2 pos = ImGui::GetCursorScreenPos();
+			ImGui::SetCursorScreenPos(ImVec2(pos.x, pos.y + ((th - ih) * 0.5f)));
+			ImGui::Text("VID:%04X", iap_config.boot_vid);
+			ImGui::Text("PID:%04X", iap_config.boot_pid);
+			ImGui::Text("VER:%s", iap_bin_soft_version.c_str());
+		}
+		ImGui::EndGroup();
+	}
 
 	const float progress_global_size = contentRegionAvail.x;
 	float progress_global = (float)progress_pos / progress_limit;
@@ -476,6 +605,7 @@ static void ShowRootWindowProgress(void)
 	char buf_global[32];
 	sprintf(buf_global, "%d/%d", (int)(progress_global_saturated * progress_limit), progress_limit);
 	ImGui::ProgressBar(progress_global, ImVec2(progress_global_size, 0.f), buf_global);
+	ImGui::Text(label_message);
 
 	if (g_upgrading_flag || !g_file_valid_flag)
 	{

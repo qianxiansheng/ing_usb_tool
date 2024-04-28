@@ -93,14 +93,14 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_SILENCE_CXX17_CODECVT_HEADER_DEPRECATION_WARNING;_SILENCE_CXX17_RESULT_OF_DEPRECATION_WARNING;_CRT_SECURE_NO_WARNINGS;WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(ProjectDir)src;$(SolutionDir)common;$(SolutionDir)common\imgui;$(SolutionDir)common\imgui\backends;$(SolutionDir)common\imgui\extensions;$(SolutionDir)dependence\glfw\include;$(SolutionDir)dependence\libusb\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)src;$(SolutionDir)common;$(SolutionDir)common\imgui;$(SolutionDir)common\imgui\backends;$(SolutionDir)common\imgui\extensions;$(SolutionDir)dependence\glfw\include;$(SolutionDir)dependence\libusb\include;$(SolutionDir)..\..\PE\PETool\src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>$(SolutionDir)dependence\glfw\lib\$(Platform);$(SolutionDir)dependence\libusb\lib\$(Platform)\$(Configuration)\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>glfw3.lib;opengl32.lib;gdi32.lib;shell32.lib;libusb-1.0.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(SolutionDir)dependence\glfw\lib\$(Platform);$(SolutionDir)dependence\libusb\lib\$(Platform)\$(Configuration)\;$(SolutionDir)..\..\PE\bin\$(Platform)\$(Configuration)\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>glfw3.lib;opengl32.lib;gdi32.lib;shell32.lib;libusb-1.0.lib;PETool.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -111,7 +111,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_SILENCE_CXX17_CODECVT_HEADER_DEPRECATION_WARNING;_SILENCE_CXX17_RESULT_OF_DEPRECATION_WARNING;_CRT_SECURE_NO_WARNINGS;WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(ProjectDir)src;$(SolutionDir)common;$(SolutionDir)common\imgui;$(SolutionDir)common\imgui\backends;$(SolutionDir)common\imgui\extensions;$(SolutionDir)dependence\glfw\include;$(SolutionDir)dependence\libusb\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)src;$(SolutionDir)common;$(SolutionDir)common\imgui;$(SolutionDir)common\imgui\backends;$(SolutionDir)common\imgui\extensions;$(SolutionDir)dependence\glfw\include;$(SolutionDir)dependence\libusb\include;$(SolutionDir)..\..\PE\PETool\src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <WholeProgramOptimization>false</WholeProgramOptimization>
     </ClCompile>
@@ -120,8 +120,8 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>$(SolutionDir)dependence\glfw\lib\$(Platform);$(SolutionDir)dependence\libusb\lib\$(Platform)\$(Configuration)\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>glfw3.lib;opengl32.lib;gdi32.lib;shell32.lib;libusb-1.0.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(SolutionDir)dependence\glfw\lib\$(Platform);$(SolutionDir)dependence\libusb\lib\$(Platform)\$(Configuration)\;$(SolutionDir)..\..\PE\bin\$(Platform)\$(Configuration)\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>glfw3.lib;opengl32.lib;gdi32.lib;shell32.lib;libusb-1.0.lib;PETool.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -130,14 +130,14 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_SILENCE_CXX17_CODECVT_HEADER_DEPRECATION_WARNING;_SILENCE_CXX17_RESULT_OF_DEPRECATION_WARNING;_CRT_SECURE_NO_WARNINGS;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(ProjectDir)src;$(SolutionDir)common;$(SolutionDir)common\imgui;$(SolutionDir)common\imgui\backends;$(SolutionDir)common\imgui\extensions;$(SolutionDir)dependence\glfw\include;$(SolutionDir)dependence\libusb\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)src;$(SolutionDir)common;$(SolutionDir)common\imgui;$(SolutionDir)common\imgui\backends;$(SolutionDir)common\imgui\extensions;$(SolutionDir)dependence\glfw\include;$(SolutionDir)dependence\libusb\include;$(SolutionDir)..\..\PE\PETool\src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>$(SolutionDir)dependence\glfw\lib\$(Platform);$(SolutionDir)dependence\libusb\lib\$(Platform)\$(Configuration)\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>glfw3.lib;opengl32.lib;gdi32.lib;shell32.lib;libusb-1.0.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(SolutionDir)dependence\glfw\lib\$(Platform);$(SolutionDir)dependence\libusb\lib\$(Platform)\$(Configuration)\;$(SolutionDir)..\..\PE\bin\$(Platform)\$(Configuration)\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>glfw3.lib;opengl32.lib;gdi32.lib;shell32.lib;libusb-1.0.lib;PETool.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -149,17 +149,18 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_SILENCE_CXX17_CODECVT_HEADER_DEPRECATION_WARNING;_SILENCE_CXX17_RESULT_OF_DEPRECATION_WARNING;_CRT_SECURE_NO_WARNINGS;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(ProjectDir)src;$(SolutionDir)common;$(SolutionDir)common\imgui;$(SolutionDir)common\imgui\backends;$(SolutionDir)common\imgui\extensions;$(SolutionDir)dependence\glfw\include;$(SolutionDir)dependence\libusb\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)src;$(SolutionDir)common;$(SolutionDir)common\imgui;$(SolutionDir)common\imgui\backends;$(SolutionDir)common\imgui\extensions;$(SolutionDir)dependence\glfw\include;$(SolutionDir)dependence\libusb\include;$(SolutionDir)..\..\PE\PETool\src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp17</LanguageStandard>
-      <WholeProgramOptimization>false</WholeProgramOptimization>
+      <WholeProgramOptimization>true</WholeProgramOptimization>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>glfw3.lib;opengl32.lib;gdi32.lib;shell32.lib;libusb-1.0.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>$(SolutionDir)dependence\glfw\lib\$(Platform);$(SolutionDir)dependence\libusb\lib\$(Platform)\$(Configuration)\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>glfw3.lib;opengl32.lib;gdi32.lib;shell32.lib;libusb-1.0.lib;PETool.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(SolutionDir)dependence\glfw\lib\$(Platform);$(SolutionDir)dependence\libusb\lib\$(Platform)\$(Configuration)\;$(SolutionDir)..\..\PE\bin\$(Platform)\$(Configuration)\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <StackReserveSize>3000000</StackReserveSize>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
@@ -176,6 +177,7 @@
     <ClCompile Include="..\common\util\aes.cpp" />
     <ClCompile Include="..\common\util\ini.c" />
     <ClCompile Include="..\common\util\INIReader.cpp" />
+    <ClCompile Include="..\common\util\PEUtils.cpp" />
     <ClCompile Include="..\common\util\utils.cpp" />
     <ClCompile Include="src\bingen\bin.cpp" />
     <ClCompile Include="src\bingen\bingen.cpp" />

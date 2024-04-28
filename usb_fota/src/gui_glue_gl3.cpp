@@ -78,7 +78,7 @@ int main_(int argc, char** argv)
     window = glfwCreateWindow(1280, 720, APP_TITLE, NULL, NULL);
     if (window == NULL)
         return 1;
-    glfwMaximizeWindow(window);
+    //glfwMaximizeWindow(window);
     glfwMakeContextCurrent(window);
     glfwSwapInterval(1); // Enable vsync
 

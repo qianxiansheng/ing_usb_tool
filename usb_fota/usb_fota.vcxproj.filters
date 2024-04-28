@@ -96,6 +96,9 @@
     <ClCompile Include="src\bingen\execonfig.cpp">
       <Filter>src\bingen</Filter>
     </ClCompile>
+    <ClCompile Include="..\common\util\PEUtils.cpp">
+      <Filter>src\util</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\pch.h">

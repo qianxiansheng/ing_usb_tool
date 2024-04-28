@@ -39,7 +39,7 @@ static bool opt_showlogwindow = true;
 static bool opt_showusbdevicetreewindow = false;
 static bool opt_showusbsendwindow = false;
 static bool opt_showbingenwindow = true;
-static bool opt_showbinviewerwindow = true;
+static bool opt_showbinviewerwindow = false;
 static bool opt_showiapwindow = false;
 
 ImVec4 clear_color = ImVec4(0.35f, 0.35f, 0.35f, 1.00f);

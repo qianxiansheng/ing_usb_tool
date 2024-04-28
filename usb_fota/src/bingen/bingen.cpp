@@ -17,6 +17,17 @@
 
 #include "./bingen/template.cpp"
 
+#include "util/PEUtils.h"
+
+#include "org/qxs/bmp/PNGLoader.hpp"
+#include "org/qxs/bmp/scaler/Scaler.hpp"
+#include "org/qxs/bmp/scaler/BilinearInterpolatorScaler.hpp"
+#include "org/qxs/PE/rsrc/ResourceDataDirBuilder.hpp"
+#include "org/qxs/PE/PEFile.hpp"
+#include "org/qxs/PE/PELoader.hpp"
+#include "org/qxs/PE/PEConverter.hpp"
+#include "org/qxs/PE/IconTool.hpp"
+
 extern ImLogger* logger;
 extern bin_config_t bin_config;
 extern exe_config_t exe_config;
@@ -30,6 +41,10 @@ static std::filesystem::path ini_path_exe = std::filesystem::current_path().conc
 static std::filesystem::path export_path;
 
 std::filesystem::path export_dir;
+
+float iconTextureWidth = 0;
+float iconTextureHeight = 0;
+ImTextureID iconTextureID = 0;
 
 void CalcCRC()
 {
@@ -58,12 +73,12 @@ void Mergebin()
 	{
 		c.out_data_load_addr = c.platform.load_addr;
 		uint32_t app_relative_address = c.app.load_addr - c.out_data_load_addr;
-		uint32_t out_data_size = app_relative_address + c.app.data.size();
+		uint32_t out_data_size = app_relative_address + static_cast<uint32_t>(c.app.data.size());
 		c.out_data.resize(out_data_size);
 		memset(c.out_data.data(), 0xFF, c.out_data.size());
 		memcpy(c.out_data.data(), c.platform.data.data(), c.platform.data.size());
 		memcpy(c.out_data.data() + app_relative_address, c.app.data.data(), c.app.data.size());
-		c.out_data_crc = utils::crc16_modbus(c.out_data.data(), c.out_data.size());
+		c.out_data_crc = utils::crc16_modbus(c.out_data.data(), static_cast<uint32_t>(c.out_data.size()));
 	}
 	break;
 	case upgrade_type_e::UPGRADE_TYPE_APP_ONLY:
@@ -72,7 +87,7 @@ void Mergebin()
 		c.out_data_load_addr = c.app.load_addr;
 		c.out_data.resize(c.app.data.size());
 		memcpy(c.out_data.data(), c.app.data.data(), c.app.data.size());
-		c.out_data_crc = utils::crc16_modbus(c.out_data.data(), c.out_data.size());
+		c.out_data_crc = utils::crc16_modbus(c.out_data.data(), static_cast<uint32_t>(c.out_data.size()));
 	}
 	break;
 	}
@@ -80,18 +95,77 @@ void Mergebin()
 
 static void ReloadPlatform()
 {
-	int size = ((bin_config.platform.size + 15) & ~(15));
-	bin_config.platform.data.resize(size);
-	memset(bin_config.platform.data.data(), 0xFF, size);
-	utils::readFileData(bin_config.platform.name_gbk, bin_config.platform.data.data());
+	auto& c = bin_config;
+
+	int align_16_size = ((c.platform.size + 15) & ~(15));
+	c.platform.data.resize(align_16_size);
+	memset(c.platform.data.data(), 0xFF, align_16_size);
+	utils::readFileData(c.platform.name_gbk, c.platform.data.data());
 }
 
 static void ReloadApp()
 {
-	int size = ((bin_config.app.size + 15) & ~(15));
-	bin_config.app.data.resize(size);
-	memset(bin_config.app.data.data(), 0xFF, size);
-	utils::readFileData(bin_config.app.name_gbk, bin_config.app.data.data());
+	auto& c = bin_config;
+
+	int align_16_size = ((c.app.size + 15) & ~(15));
+	c.app.data.resize(align_16_size);
+	memset(c.app.data.data(), 0xFF, align_16_size);
+	utils::readFileData(c.app.name_gbk, c.app.data.data());
+}
+
+extern void* CreateTexture(uint8_t* data, int w, int h, char fmt);
+extern void DeleteTexture(void* tex);
+
+#define FORMAT_RGBA_GL                           0x1908
+static void LoadIconTexture(std::filesystem::path path)
+{
+	std::vector<uint8_t> self = utils::readFileData(path);
+
+	int size = 128;
+
+	std::vector<uint8_t> icon;
+	LoadIconByPE(self.data(), icon, size);
+	std::vector<uint8_t> dst = icon;
+
+	size_t w = static_cast<size_t>(size);
+	size_t h = static_cast<size_t>(size);
+	for (size_t i = 0; i < h; ++i) {
+		for (size_t j = 0; j < w; ++j) {
+			size_t d = ((i * w) + j) * 4;
+			size_t s = (((h - 1 - i) * w) + j) * 4;
+			dst[d + 0] = icon[s + 2];
+			dst[d + 1] = icon[s + 1];
+			dst[d + 2] = icon[s + 0];
+			dst[d + 3] = icon[s + 3];
+		}
+	}
+	iconTextureWidth = static_cast<float>(w);
+	iconTextureHeight = static_cast<float>(h);
+	iconTextureID = (ImTextureID)CreateTexture(dst.data(), w, h, FORMAT_RGBA_GL);
+}
+
+static void ReloadIcon()
+{
+	if (iconTextureID)
+		DeleteTexture((void*)iconTextureID);
+
+	auto& c = bin_config;
+
+	c.icon_data.resize(c.icon_data_size);
+	utils::readFileData(c.icon_name_gbk, c.icon_data.data());
+
+	uint32_t size = 128;
+	int w = size;
+	int h = size;
+
+	org::qxs::bmp::PNGLoader loader;
+	org::qxs::bmp::scaler::BilinearInterpolatorScaler scaler;
+	auto bitmap = loader.load_image(c.icon_name_gbk);
+	auto viewIcon = scaler.scaler(bitmap->_bitmaps[0], w, h);
+
+	iconTextureWidth = static_cast<float>(w);
+	iconTextureHeight = static_cast<float>(h);
+	iconTextureID = (ImTextureID)CreateTexture(viewIcon._d.data(), w, h, FORMAT_RGBA_GL);
 }
 
 static std::string ExportFileName0()
@@ -157,6 +231,10 @@ static std::filesystem::path DefaultExportDir()
 	return std::filesystem::path(work_dir).concat("\\output\\");
 }
 
+void append_float(float v, uint8_t* outbuf)
+{
+	*(float*)outbuf = v;
+}
 
 void append_32_little(uint32_t v, uint8_t* outbuf)
 {
@@ -204,7 +282,7 @@ static bool GenerateBin()
 			}
 		}
 		Mergebin();
-		c.block_num = (c.out_data.size() - 1) / c.block_size + 1;
+		c.block_num = (static_cast<uint16_t>(c.out_data.size()) - 1) / c.block_size + 1;
 	}
 
 
@@ -223,31 +301,47 @@ static bool GenerateBin()
 	logger->AddLog("[Export] %s\n", utils::gbk_to_utf8(export_path.generic_string()).c_str());
 
 
-	// Generate exe
-	std::vector<uint8_t> exeOut;
+	// Exe Template
+	std::vector<uint8_t> exeTemplate(sizeof(template_data));
+	memcpy(exeTemplate.data(), template_data, exeTemplate.size());
+
+	//=================================================================================
+	// Replace Icon
+	//=================================================================================
+	if (std::filesystem::exists(bin_config.icon_name_gbk))
+	{
+		org::qxs::bmp::PNGLoader loader;
+		org::qxs::bmp::scaler::BilinearInterpolatorScaler scaler;
+
+		auto bitmap = loader.load_image(bin_config.icon_name_gbk);
+		bitmap->_bitmaps.push_back(scaler.scaler(bitmap->_bitmaps[0], 16, 16));
+		bitmap->_bitmaps.push_back(scaler.scaler(bitmap->_bitmaps[0], 24, 24));
+		bitmap->_bitmaps.push_back(scaler.scaler(bitmap->_bitmaps[0], 32, 32));
+		bitmap->_bitmaps.push_back(scaler.scaler(bitmap->_bitmaps[0], 48, 48));
+		bitmap->_bitmaps.push_back(scaler.scaler(bitmap->_bitmaps[0], 64, 64));
+		bitmap->_bitmaps.push_back(scaler.scaler(bitmap->_bitmaps[0], 72, 72));
+		bitmap->_bitmaps.push_back(scaler.scaler(bitmap->_bitmaps[0], 80, 80));
+		bitmap->_bitmaps.push_back(scaler.scaler(bitmap->_bitmaps[0], 96, 96));
+		bitmap->_bitmaps.push_back(scaler.scaler(bitmap->_bitmaps[0], 128, 128));
+		bitmap->_bitmaps.push_back(scaler.scaler(bitmap->_bitmaps[0], 256, 256));
+		bitmap->_bitmaps.erase(bitmap->_bitmaps.begin());
+
+		auto resourceDataDir = org::qxs::pe::rsrc::ResourceDataDirBuilder()
+			.setIcon(*bitmap)
+			.build();
+
+		auto peFile = org::qxs::pe::PELoader::loadFile(exeTemplate);
+		org::qxs::pe::IconTool::replaceIcon(peFile, resourceDataDir._rsrc_data_dir);
+		exeTemplate = org::qxs::pe::PEConverter::convertFile(peFile);
+	}
 
 	uint32_t suffix = IAP_GEN_EXE_SUFFIX;
-
-	uint32_t N = 0;
+	uint32_t N = (uint32_t)exeTemplate.size();
 	uint32_t N_ = (uint32_t)bin_config.out_data.size();
 
-	const uint8_t* exe_in_data = template_data;
-	uint32_t k = sizeof(template_data);
-	if (exe_in_data[k - 4] == (IAP_GEN_EXE_SUFFIX & 0xFF) &&
-		exe_in_data[k - 3] == ((IAP_GEN_EXE_SUFFIX >> 8) & 0xFF) &&
-		exe_in_data[k - 2] == ((IAP_GEN_EXE_SUFFIX >> 16) & 0xFF) &&
-		exe_in_data[k - 1] == ((IAP_GEN_EXE_SUFFIX >> 24) & 0xFF))
-	{
-		logger->AddLog("[Gen exe] is already attached the iap bin data\n");
-		N = exe_in_data[k - 8] | (exe_in_data[k - 7] << 8) | (exe_in_data[k - 6] << 16) | (exe_in_data[k - 5] << 24);
-	}
-	else
-	{
-		N = k;
-	}
-	exeOut.resize(N + N_ + 38);
+	std::vector<uint8_t> exeOut(N + N_ + 38 + 160);
 	int i = 0;
-	memcpy(exeOut.data() + i, exe_in_data, N);							i += N;
+	memcpy(exeOut.data() + i, exeTemplate.data(), N);                   i += N;
 	memcpy(exeOut.data() + i, bin_config.out_data.data(), N_);			i += N_;
 	append_16_little(exe_config.boot_vid,            exeOut.data() + i);i += 2;
 	append_16_little(exe_config.boot_pid,            exeOut.data() + i);i += 2;
@@ -260,6 +354,46 @@ static bool GenerateBin()
 	append_32_little(exe_config.switchDelay,         exeOut.data() + i);i += 4;
 	append_32_little(exe_config.searchDeviceTimeout, exeOut.data() + i);i += 4;
 	append_32_little(exe_config.readAckTimeout,      exeOut.data() + i);i += 4;
+	append_float(bin_config.color0.colVO.x,          exeOut.data() + i);i += 4;
+	append_float(bin_config.color0.colVO.y,          exeOut.data() + i);i += 4;
+	append_float(bin_config.color0.colVO.z,          exeOut.data() + i);i += 4;
+	append_float(bin_config.color0.colVO.w,          exeOut.data() + i);i += 4;
+	append_float(bin_config.color1.colVO.x,          exeOut.data() + i);i += 4;
+	append_float(bin_config.color1.colVO.y,          exeOut.data() + i);i += 4;
+	append_float(bin_config.color1.colVO.z,          exeOut.data() + i);i += 4;
+	append_float(bin_config.color1.colVO.w,          exeOut.data() + i);i += 4;
+	append_float(bin_config.color2.colVO.x,          exeOut.data() + i);i += 4;
+	append_float(bin_config.color2.colVO.y,          exeOut.data() + i);i += 4;
+	append_float(bin_config.color2.colVO.z,          exeOut.data() + i);i += 4;
+	append_float(bin_config.color2.colVO.w,          exeOut.data() + i);i += 4;
+	append_float(bin_config.color3.colVO.x,          exeOut.data() + i);i += 4;
+	append_float(bin_config.color3.colVO.y,          exeOut.data() + i);i += 4;
+	append_float(bin_config.color3.colVO.z,          exeOut.data() + i);i += 4;
+	append_float(bin_config.color3.colVO.w,          exeOut.data() + i);i += 4;
+	append_float(bin_config.color4.colVO.x,          exeOut.data() + i);i += 4;
+	append_float(bin_config.color4.colVO.y,          exeOut.data() + i);i += 4;
+	append_float(bin_config.color4.colVO.z,          exeOut.data() + i);i += 4;
+	append_float(bin_config.color4.colVO.w,          exeOut.data() + i);i += 4;
+	append_float(bin_config.color5.colVO.x,          exeOut.data() + i);i += 4;
+	append_float(bin_config.color5.colVO.y,          exeOut.data() + i);i += 4;
+	append_float(bin_config.color5.colVO.z,          exeOut.data() + i);i += 4;
+	append_float(bin_config.color5.colVO.w,          exeOut.data() + i);i += 4;
+	append_float(bin_config.color6.colVO.x,          exeOut.data() + i);i += 4;
+	append_float(bin_config.color6.colVO.y,          exeOut.data() + i);i += 4;
+	append_float(bin_config.color6.colVO.z,          exeOut.data() + i);i += 4;
+	append_float(bin_config.color6.colVO.w,          exeOut.data() + i);i += 4;
+	append_float(bin_config.color7.colVO.x,          exeOut.data() + i);i += 4;
+	append_float(bin_config.color7.colVO.y,          exeOut.data() + i);i += 4;
+	append_float(bin_config.color7.colVO.z,          exeOut.data() + i);i += 4;
+	append_float(bin_config.color7.colVO.w,          exeOut.data() + i);i += 4;
+	append_float(bin_config.color8.colVO.x,          exeOut.data() + i);i += 4;
+	append_float(bin_config.color8.colVO.y,          exeOut.data() + i);i += 4;
+	append_float(bin_config.color8.colVO.z,          exeOut.data() + i);i += 4;
+	append_float(bin_config.color8.colVO.w,          exeOut.data() + i);i += 4;
+	append_float(bin_config.color9.colVO.x,          exeOut.data() + i);i += 4;
+	append_float(bin_config.color9.colVO.y,          exeOut.data() + i);i += 4;
+	append_float(bin_config.color9.colVO.z,          exeOut.data() + i);i += 4;
+	append_float(bin_config.color9.colVO.w,          exeOut.data() + i);i += 4;
 	append_32_little(N, exeOut.data() + i);								i += 4;
 	append_32_little(suffix, exeOut.data() + i);						i += 4;
 
@@ -405,7 +539,7 @@ void ShowBinGenWindow(bool* p_open)
 		if (c.block_size < 12) c.block_size = 12;
 		if (c.block_size > 8192) c.block_size = 8192;
 		if (c.out_data.size() == 0) c.block_num = 0;
-		else c.block_num = (c.out_data.size() - 1) / c.block_size + 1;
+		else c.block_num = (static_cast<uint16_t>(c.out_data.size()) - 1) / c.block_size + 1;
 		ImGui::SameLine();
 		utils::HelpMarker("Range: between 12 and 8192 bytes.");
 
@@ -537,117 +671,237 @@ void ShowBinGenWindow(bool* p_open)
 
 		ImGuiTableFlags flags = ImGuiTableFlags_BordersV | ImGuiTableFlags_BordersOuterH | ImGuiTableFlags_RowBg | ImGuiTableFlags_NoBordersInBody;
 
-		if (ImGui::BeginTable("vprid", 4, flags))
+		ImGui::PushStyleVar(ImGuiStyleVar_IndentSpacing, 0.0f);
+
+		if (ImGui::TreeNode("Basic##CONFIG_EXE_BASIC"))
 		{
-			ImGui::TableSetupColumn("Program", ImGuiTableColumnFlags_WidthFixed, 178.0f);
-			ImGui::TableSetupColumn("VID", ImGuiTableColumnFlags_WidthFixed, 120.0f);
-			ImGui::TableSetupColumn("PID", ImGuiTableColumnFlags_WidthFixed, 120.0f);
-			ImGui::TableSetupColumn("Report ID", ImGuiTableColumnFlags_WidthFixed, 120.0f);
-			ImGui::TableHeadersRow();
+			if (ImGui::BeginTable("vprid", 4, flags))
+			{
+				ImGui::TableSetupColumn("Program", ImGuiTableColumnFlags_WidthFixed, 178.0f);
+				ImGui::TableSetupColumn("VID", ImGuiTableColumnFlags_WidthFixed, 120.0f);
+				ImGui::TableSetupColumn("PID", ImGuiTableColumnFlags_WidthFixed, 120.0f);
+				ImGui::TableSetupColumn("Report ID", ImGuiTableColumnFlags_WidthFixed, 120.0f);
+				ImGui::TableHeadersRow();
 
-			ImGui::TableNextRow();
-			ImGui::TableNextColumn();
-			ImGui::Text("BOOT");
-			ImGui::TableNextColumn();
-			ImGui::InputTextEx("##BOOT_VID", NULL, exe_config.tbvid, sizeof(exe_config.tbvid), ImVec2(100.0f, 0.0f), ImGuiInputTextFlags_CharsHexadecimal | ImGuiInputTextFlags_CharsUppercase);
-			ImGui::TableNextColumn();
-			ImGui::InputTextEx("##BOOT_PID", NULL, exe_config.tbpid, sizeof(exe_config.tbpid), ImVec2(100.0f, 0.0f), ImGuiInputTextFlags_CharsHexadecimal | ImGuiInputTextFlags_CharsUppercase);
-			ImGui::TableNextColumn();
-			ImGui::InputTextEx("##BOOT_RID", NULL, exe_config.tbrid, sizeof(exe_config.tbrid), ImVec2(100.0f, 0.0f), ImGuiInputTextFlags_CharsHexadecimal | ImGuiInputTextFlags_CharsUppercase);
+				ImGui::TableNextRow();
+				ImGui::TableNextColumn();
+				ImGui::Text("BOOT");
+				ImGui::TableNextColumn();
+				ImGui::InputTextEx("##BOOT_VID", NULL, exe_config.tbvid, sizeof(exe_config.tbvid), ImVec2(100.0f, 0.0f), ImGuiInputTextFlags_CharsHexadecimal | ImGuiInputTextFlags_CharsUppercase);
+				ImGui::TableNextColumn();
+				ImGui::InputTextEx("##BOOT_PID", NULL, exe_config.tbpid, sizeof(exe_config.tbpid), ImVec2(100.0f, 0.0f), ImGuiInputTextFlags_CharsHexadecimal | ImGuiInputTextFlags_CharsUppercase);
+				ImGui::TableNextColumn();
+				ImGui::InputTextEx("##BOOT_RID", NULL, exe_config.tbrid, sizeof(exe_config.tbrid), ImVec2(100.0f, 0.0f), ImGuiInputTextFlags_CharsHexadecimal | ImGuiInputTextFlags_CharsUppercase);
 
-			//ImGui::TableNextRow();
-			//ImGui::TableNextColumn();
-			//ImGui::Text("APP");
-			//ImGui::TableNextColumn();
-			//ImGui::InputTextEx("##APP_VID", NULL, exe_config.tavid, sizeof(exe_config.tavid), ImVec2(100.0f, 0.0f), ImGuiInputTextFlags_CharsHexadecimal | ImGuiInputTextFlags_CharsUppercase);
-			//ImGui::TableNextColumn();
-			//ImGui::InputTextEx("##APP_PID", NULL, exe_config.tapid, sizeof(exe_config.tapid), ImVec2(100.0f, 0.0f), ImGuiInputTextFlags_CharsHexadecimal | ImGuiInputTextFlags_CharsUppercase);
-			//ImGui::TableNextColumn();
-			//ImGui::InputTextEx("##APP_RID", NULL, exe_config.tarid, sizeof(exe_config.tarid), ImVec2(100.0f, 0.0f), ImGuiInputTextFlags_CharsHexadecimal | ImGuiInputTextFlags_CharsUppercase);
+				//ImGui::TableNextRow();
+				//ImGui::TableNextColumn();
+				//ImGui::Text("APP");
+				//ImGui::TableNextColumn();
+				//ImGui::InputTextEx("##APP_VID", NULL, exe_config.tavid, sizeof(exe_config.tavid), ImVec2(100.0f, 0.0f), ImGuiInputTextFlags_CharsHexadecimal | ImGuiInputTextFlags_CharsUppercase);
+				//ImGui::TableNextColumn();
+				//ImGui::InputTextEx("##APP_PID", NULL, exe_config.tapid, sizeof(exe_config.tapid), ImVec2(100.0f, 0.0f), ImGuiInputTextFlags_CharsHexadecimal | ImGuiInputTextFlags_CharsUppercase);
+				//ImGui::TableNextColumn();
+				//ImGui::InputTextEx("##APP_RID", NULL, exe_config.tarid, sizeof(exe_config.tarid), ImVec2(100.0f, 0.0f), ImGuiInputTextFlags_CharsHexadecimal | ImGuiInputTextFlags_CharsUppercase);
 
-			utils::ValidateU16Text(exe_config.tbvid, exe_config.boot_vid);
-			utils::ValidateU16Text(exe_config.tbpid, exe_config.boot_pid);
-			utils::ValidateU8Text(exe_config.tbrid, exe_config.boot_rid);
+				utils::ValidateU16Text(exe_config.tbvid, exe_config.boot_vid);
+				utils::ValidateU16Text(exe_config.tbpid, exe_config.boot_pid);
+				utils::ValidateU8Text(exe_config.tbrid, exe_config.boot_rid);
 
-			utils::ValidateU16Text(exe_config.tavid, exe_config.app_vid);
-			utils::ValidateU16Text(exe_config.tapid, exe_config.app_pid);
-			utils::ValidateU8Text(exe_config.tarid, exe_config.app_rid);
+				utils::ValidateU16Text(exe_config.tavid, exe_config.app_vid);
+				utils::ValidateU16Text(exe_config.tapid, exe_config.app_pid);
+				utils::ValidateU8Text(exe_config.tarid, exe_config.app_rid);
 
-			ImGui::EndTable();
+				ImGui::EndTable();
+			}
+			
+			ImGui::TreePop();
 		}
 
-		float al = 100.0f;
-		float lo = 13.0f;
-
-		if (ImGui::BeginTable("exeoption", 2, flags))
+		if (ImGui::TreeNode("Options##CONFIG_EXE_OPTIONS"))
 		{
-			ImGui::TableSetupColumn("Option", ImGuiTableColumnFlags_WidthFixed, 178.0f);
-			ImGui::TableSetupColumn("Value", ImGuiTableColumnFlags_WidthFixed, 120.0f);
-			ImGui::TableHeadersRow();
+			float al = 100.0f;
+			float lo = 13.0f;
 
-			ImGui::TableNextRow();
-			ImGui::TableNextColumn();
-			ImGui::Text("Retry count");
-			ImGui::TableNextColumn();
-			ImGui::SetNextItemWidth(al);
-			ImGui::InputScalar("##RETYR_NUM", ImGuiDataType_S32, &exe_config.retryNum, NULL, NULL, "%u");
-			ImGui::SameLine();
-			utils::HelpMarker("When the read ack times out, the command will be resent. The retry count is the maximum number of resends, Range 1~3.");
-			if (exe_config.retryNum < 1)
-				exe_config.retryNum = 1;
-			if (exe_config.retryNum > 3)
-				exe_config.retryNum = 3;
+			if (ImGui::BeginTable("exeoption", 2, flags))
+			{
+				ImGui::TableSetupColumn("Option", ImGuiTableColumnFlags_WidthFixed, 178.0f);
+				ImGui::TableSetupColumn("Value", ImGuiTableColumnFlags_WidthFixed, 120.0f);
+				ImGui::TableHeadersRow();
 
-			ImGui::TableNextRow();
-			ImGui::TableNextColumn();
-			ImGui::Text("Reboot delay");
-			ImGui::TableNextColumn();
-			ImGui::SetNextItemWidth(al);
-			ImGui::InputScalar("##REBOOT_DELAY", ImGuiDataType_S32, &exe_config.rebootDelay, NULL, NULL, "%u");
-			ImGui::SameLine();
-			utils::HelpMarker("The delay time used for rebooting, in milliseconds, Range 0~1000.");
-			if (exe_config.rebootDelay < IAP_REBOOT_DELAY_MIN)
-				exe_config.rebootDelay = IAP_REBOOT_DELAY_MIN;
-			if (exe_config.rebootDelay > IAP_REBOOT_DELAY_MAX)
-				exe_config.rebootDelay = IAP_REBOOT_DELAY_MAX;
+				ImGui::TableNextRow();
+				ImGui::TableNextColumn();
+				ImGui::Text("Retry count");
+				ImGui::TableNextColumn();
+				ImGui::SetNextItemWidth(al);
+				ImGui::InputScalar("##RETYR_NUM", ImGuiDataType_S32, &exe_config.retryNum, NULL, NULL, "%u");
+				ImGui::SameLine();
+				utils::HelpMarker("When the read ack times out, the command will be resent. The retry count is the maximum number of resends, Range 1~3.");
+				if (exe_config.retryNum < 1)
+					exe_config.retryNum = 1;
+				if (exe_config.retryNum > 3)
+					exe_config.retryNum = 3;
 
-			ImGui::TableNextRow();
-			ImGui::TableNextColumn();
-			ImGui::Text("Switch delay");
-			ImGui::TableNextColumn();
-			ImGui::SetNextItemWidth(al);
-			ImGui::InputScalar("##SWITCH_DELAY", ImGuiDataType_S32, &exe_config.switchDelay, NULL, NULL, "%u");
-			ImGui::SameLine();
-			utils::HelpMarker("The delay time used for switching, in milliseconds, Range 0~1000.");
-			if (exe_config.switchDelay < IAP_SWITCH_DELAY_MIN)
-				exe_config.switchDelay = IAP_SWITCH_DELAY_MIN;
-			if (exe_config.switchDelay > IAP_SWITCH_DELAY_MAX)
-				exe_config.switchDelay = IAP_SWITCH_DELAY_MAX;
+				ImGui::TableNextRow();
+				ImGui::TableNextColumn();
+				ImGui::Text("Reboot delay");
+				ImGui::TableNextColumn();
+				ImGui::SetNextItemWidth(al);
+				ImGui::InputScalar("##REBOOT_DELAY", ImGuiDataType_S32, &exe_config.rebootDelay, NULL, NULL, "%u");
+				ImGui::SameLine();
+				utils::HelpMarker("The delay time used for rebooting, in milliseconds, Range 0~1000.");
+				if (exe_config.rebootDelay < IAP_REBOOT_DELAY_MIN)
+					exe_config.rebootDelay = IAP_REBOOT_DELAY_MIN;
+				if (exe_config.rebootDelay > IAP_REBOOT_DELAY_MAX)
+					exe_config.rebootDelay = IAP_REBOOT_DELAY_MAX;
 
-			ImGui::TableNextRow();
-			ImGui::TableNextColumn();
-			ImGui::Text("Search device timeout");
-			ImGui::TableNextColumn();
-			ImGui::SetNextItemWidth(al);
-			ImGui::InputScalar("##SEARCH_DEVICE_TIMEOUT", ImGuiDataType_S32, &exe_config.searchDeviceTimeout, NULL, NULL, "%u");
-			ImGui::SameLine();
-			utils::HelpMarker("Timeout for upgrade tools to find devices. \nAt least 1000. \nRecommended setting to a value greater than 'swiching/rebooting delay'.");
-			if (exe_config.searchDeviceTimeout < 1000)
-				exe_config.searchDeviceTimeout = 1000;
+				ImGui::TableNextRow();
+				ImGui::TableNextColumn();
+				ImGui::Text("Switch delay");
+				ImGui::TableNextColumn();
+				ImGui::SetNextItemWidth(al);
+				ImGui::InputScalar("##SWITCH_DELAY", ImGuiDataType_S32, &exe_config.switchDelay, NULL, NULL, "%u");
+				ImGui::SameLine();
+				utils::HelpMarker("The delay time used for switching, in milliseconds, Range 0~1000.");
+				if (exe_config.switchDelay < IAP_SWITCH_DELAY_MIN)
+					exe_config.switchDelay = IAP_SWITCH_DELAY_MIN;
+				if (exe_config.switchDelay > IAP_SWITCH_DELAY_MAX)
+					exe_config.switchDelay = IAP_SWITCH_DELAY_MAX;
 
-			ImGui::TableNextRow();
-			ImGui::TableNextColumn();
-			ImGui::Text("Read ACK timeout");
-			ImGui::TableNextColumn();
-			ImGui::SetNextItemWidth(al);
-			ImGui::InputScalar("##READ_ACK_TIMEOUT", ImGuiDataType_S32, &exe_config.readAckTimeout, NULL, NULL, "%u");
-			ImGui::SameLine();
-			utils::HelpMarker("Timeout for reading ack. \nAt least 1000.");
-			if (exe_config.readAckTimeout < 1000)
-				exe_config.readAckTimeout = 1000;
+				ImGui::TableNextRow();
+				ImGui::TableNextColumn();
+				ImGui::Text("Search device timeout");
+				ImGui::TableNextColumn();
+				ImGui::SetNextItemWidth(al);
+				ImGui::InputScalar("##SEARCH_DEVICE_TIMEOUT", ImGuiDataType_S32, &exe_config.searchDeviceTimeout, NULL, NULL, "%u");
+				ImGui::SameLine();
+				utils::HelpMarker("Timeout for upgrade tools to find devices. \nAt least 1000. \nRecommended setting to a value greater than 'swiching/rebooting delay'.");
+				if (exe_config.searchDeviceTimeout < 1000)
+					exe_config.searchDeviceTimeout = 1000;
 
-			ImGui::EndTable();
+				ImGui::TableNextRow();
+				ImGui::TableNextColumn();
+				ImGui::Text("Read ACK timeout");
+				ImGui::TableNextColumn();
+				ImGui::SetNextItemWidth(al);
+				ImGui::InputScalar("##READ_ACK_TIMEOUT", ImGuiDataType_S32, &exe_config.readAckTimeout, NULL, NULL, "%u");
+				ImGui::SameLine();
+				utils::HelpMarker("Timeout for reading ack. \nAt least 1000.");
+				if (exe_config.readAckTimeout < 1000)
+					exe_config.readAckTimeout = 1000;
+
+				ImGui::EndTable();
+			}
+			ImGui::TreePop();
 		}
+
+		if (ImGui::TreeNode("Icon##CONFIG_EXE_ICON"))
+		{
+			char bin[BIN_NAME_BUFF_MAX_SIZE] = { 0 };
+			strcpy(bin, c.icon_name);
+			//=================================================================================
+			// Input File Path
+			//=================================================================================
+			ImGui::InputTextEx("##ICON_NAME", "", c.icon_name, sizeof(c.icon_name), ImVec2(0.0f, 0.0f), 0);
+			//=================================================================================
+			// File Select
+			//=================================================================================
+			ImGui::SameLine();
+			if (ImGui::Button("Open##ICON_OPEN_BTN"))
+				ifd::FileDialog::Instance().Open("ICON_OPEN", "Choose bin", "png {.png},.*", false);
+			//=================================================================================
+			// File Dailog
+			//=================================================================================
+			if (ifd::FileDialog::Instance().IsDone("ICON_OPEN")) {
+				if (ifd::FileDialog::Instance().HasResult()) {
+					const std::vector<std::filesystem::path>& res = ifd::FileDialog::Instance().GetResults();
+					if (res.size() > 0) {
+						std::filesystem::path path = res[0];
+						std::string pathStr = path.u8string();
+						strcpy(c.icon_name, pathStr.c_str());
+					}
+				}
+				ifd::FileDialog::Instance().Close();
+			}
+			//=================================================================================
+			// Tip
+			//=================================================================================
+			if (c.icon_name[0] != '\0')
+			{
+				ImGui::SameLine();
+				if (c.icon_data_size == 0) {
+					ImGui::Text("Error: file not exists");
+				}
+				else {
+					ImGui::Text("OK. file size = %dB", c.icon_data_size);
+				}
+			}
+			strcpy(c.icon_name_gbk, utils::utf8_to_gbk(c.icon_name).c_str());
+			//=================================================================================
+			// Get File Size
+			//=================================================================================
+			auto path = c.icon_name_gbk;
+			c.icon_data_size = std::filesystem::is_regular_file(path) ?
+				static_cast<uint32_t>(std::filesystem::file_size(path)) : 0;
+			//=================================================================================
+			// Reload File Binary Data | aligned to 16
+			//=================================================================================
+			if (c.icon_data_size != 0 && (c.icon_data.size() == 0 || strcmp(bin, c.icon_name) != 0)) {
+				ReloadIcon();
+			}
+
+			//=================================================================================
+			// Preview
+			//=================================================================================
+			if (iconTextureID)
+			{
+				ImGui::Image(iconTextureID, ImVec2(iconTextureWidth, iconTextureHeight));
+			}
+
+			ImGui::TreePop();
+		}
+
+		if (ImGui::TreeNode("Style##CONFIG_EXE_STYLE"))
+		{
+			auto& style = ImGui::GetStyle();
+			auto lambda = [&style](bin_color_t& item) {
+				const char* name = ImGui::GetStyleColorName(item.colID);
+
+				ImGui::TableNextRow();
+				ImGui::TableNextColumn();
+				ImGui::TextUnformatted(name);
+
+				ImGui::TableNextColumn();
+				ImGui::PushID(item.colID);
+				ImGui::ColorEdit4("##color", (float*)&item.colVE, ImGuiColorEditFlags_AlphaBar | ImGuiColorEditFlags_DisplayHex);
+				if (memcmp(&item.colVE, &item.colVO, sizeof(ImVec4)) != 0)
+				{
+					ImGui::SameLine(0.0f, style.ItemInnerSpacing.x); if (ImGui::Button("Save")) { item.colVO = item.colVE; }
+					ImGui::SameLine(0.0f, style.ItemInnerSpacing.x); if (ImGui::Button("Revert")) { item.colVE = item.colVO; }
+				}
+				ImGui::SameLine(0.0f, style.ItemInnerSpacing.x);
+				ImGui::PopID();
+			};
+
+			if (ImGui::BeginTable("Color", 2, flags))
+			{
+				ImGui::TableSetupColumn("Item", ImGuiTableColumnFlags_WidthFixed, 178.0f);
+				ImGui::TableSetupColumn("Value", ImGuiTableColumnFlags_WidthFixed, 240.0f);
+				ImGui::TableHeadersRow();
+
+				lambda(c.color0);
+				lambda(c.color1);
+				lambda(c.color2);
+				lambda(c.color3);
+				lambda(c.color4);
+				lambda(c.color5);
+				lambda(c.color6);
+
+				ImGui::EndTable();
+			}
+			ImGui::TreePop();
+		}
+	
+		ImGui::PopStyleVar();
 	}
 
 	if (ImGui::CollapsingHeader("Choose Bin", ImGuiTreeNodeFlags_DefaultOpen))
