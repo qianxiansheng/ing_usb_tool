@@ -18,6 +18,7 @@
 #include "./bingen/template.cpp"
 
 #include "util/PEUtils.h"
+#include "setting.h"
 
 #include "org/qxs/bmp/PNGLoader.hpp"
 #include "org/qxs/bmp/scaler/Scaler.hpp"
@@ -33,6 +34,7 @@ extern bin_config_t bin_config;
 extern exe_config_t exe_config;
 extern uint8_t* p_mem;
 extern size_t s_mem;
+extern app_settings_t gSettings;
 
 
 static std::filesystem::path work_dir     = std::filesystem::current_path();
@@ -451,6 +453,8 @@ void ShowBinGenWindow(bool* p_open)
 		return;
 	}
 
+	app_settings_t& s = gSettings;
+
 	bool show_alert_export_success = false;
 	bool show_alert_file_in_use = false;
 	bool show_alert_analysis_success = false;
@@ -501,71 +505,89 @@ void ShowBinGenWindow(bool* p_open)
 	const char* upgrade_type_value = upgrade_type_items[upgrade_type_idx].name;
 	const char* encryption_type_value = encryption_type_items[encryption_type_idx].name;
 
-	if (ImGui::CollapsingHeader("Base", ImGuiTreeNodeFlags_DefaultOpen))
+
+	if (s.opt_bingen_base_show && ImGui::CollapsingHeader("Base", s.opt_bingen_base_expand ? ImGuiTreeNodeFlags_DefaultOpen : 0))
 	{
-
-		ImGui::Text("Chip code");
-		ImGui::SameLine();
-		ImGuiDCXAxisAlign(cl);
-		ImGui::SetNextItemWidth(wv);
-		ImGui::InputTextEx("##CHIP_CODE", "", c.chip_code, sizeof(c.chip_code), ImVec2(300.0f, 0.0f), 0);
-		ImGui::Text("Project code");
-		ImGui::SameLine();
-		ImGuiDCXAxisAlign(cl);
-		ImGui::SetNextItemWidth(wv);
-		ImGui::InputTextEx("##PROJ_CODE", "", c.proj_code, sizeof(c.proj_code), ImVec2(300.0f, 0.0f), 0);
+		if (s.opt_bingen_base_chipcode_show)
+		{
+			ImGui::Text("Chip code");
+			ImGui::SameLine();
+			ImGuiDCXAxisAlign(cl);
+			ImGui::SetNextItemWidth(wv);
+			ImGui::InputTextEx("##CHIP_CODE", "", c.chip_code, sizeof(c.chip_code), ImVec2(300.0f, 0.0f), 0);
+		}
+		if (s.opt_bingen_base_hardversion_show)
+		{
+			ImGui::Text("Project code");
+			ImGui::SameLine();
+			ImGuiDCXAxisAlign(cl);
+			ImGui::SetNextItemWidth(wv);
+			ImGui::InputTextEx("##PROJ_CODE", "", c.proj_code, sizeof(c.proj_code), ImVec2(300.0f, 0.0f), 0);
+		}
 		strcpy(buf, c.hard_version);
-		ImGui::Text("Hardware version");
-		ImGui::SameLine();
-		ImGuiDCXAxisAlign(cl);
-		ImGui::SetNextItemWidth(wv);
-		ImGui::InputTextEx("##HARD_VER", "", buf, sizeof(buf), ImVec2(300.0f, 0.0f), 0);
-		if (utils::ValidateVersion(buf))	strcpy(c.hard_version, buf);
 		strcpy(buf, c.soft_version);
-		ImGui::SameLine();
-		utils::HelpMarker("The required format is 'Vx.y.z', such as 'V2.1.3'. Please note that 'V2.1.13' is not supported.");
-		ImGui::Text("Software version");
-		ImGui::SameLine();
-		ImGuiDCXAxisAlign(cl);
-		ImGui::SetNextItemWidth(wv);
-		ImGui::InputTextEx("##SOFT_VER", "", buf, sizeof(buf), ImVec2(300.0f, 0.0f), 0);
+		if (s.opt_bingen_base_hardversion_show)
+		{
+			ImGui::Text("Hardware version");
+			ImGui::SameLine();
+			ImGuiDCXAxisAlign(cl);
+			ImGui::SetNextItemWidth(wv);
+			ImGui::InputTextEx("##HARD_VER", "", buf, sizeof(buf), ImVec2(300.0f, 0.0f), 0);
+			ImGui::SameLine();
+			utils::HelpMarker("The required format is 'Vx.y.z', such as 'V2.1.3'. Please note that 'V2.1.13' is not supported.");
+		}
+		if (s.opt_bingen_base_softversion_show)
+		{
+			ImGui::Text("Software version");
+			ImGui::SameLine();
+			ImGuiDCXAxisAlign(cl);
+			ImGui::SetNextItemWidth(wv);
+			ImGui::InputTextEx("##SOFT_VER", "", buf, sizeof(buf), ImVec2(300.0f, 0.0f), 0);
+			ImGui::SameLine();
+			utils::HelpMarker("The required format is 'Vx.y.z', such as 'V2.1.3'. Please note that 'V2.1.13' is not supported.");
+		}
+		if (utils::ValidateVersion(buf))	strcpy(c.hard_version, buf);
 		if (utils::ValidateVersion(buf))	strcpy(c.soft_version, buf);
-		ImGui::SameLine();
-		utils::HelpMarker("The required format is 'Vx.y.z', such as 'V2.1.3'. Please note that 'V2.1.13' is not supported.");
-
-		ImGui::Text("Block Size");
-		ImGui::SameLine();
-		ImGuiDCXAxisAlign(cl);
-		ImGui::SetNextItemWidth(wv);
-		ImGui::InputScalar("##BLOCK_SIZE", ImGuiDataType_U16, &c.block_size, NULL, "%u");
+		
+		if (s.opt_bingen_base_blocksize_show)
+		{
+			ImGui::Text("Block Size");
+			ImGui::SameLine();
+			ImGuiDCXAxisAlign(cl);
+			ImGui::SetNextItemWidth(wv);
+			ImGui::InputScalar("##BLOCK_SIZE", ImGuiDataType_U16, &c.block_size, NULL, "%u");
+			ImGui::SameLine();
+			utils::HelpMarker("Range: between 12 and 8192 bytes.");
+		}
 		if (c.block_size < 12) c.block_size = 12;
 		if (c.block_size > 8192) c.block_size = 8192;
-		ImGui::SameLine();
-		utils::HelpMarker("Range: between 12 and 8192 bytes.");
 
-		ImGui::Text("Upgrate Type");
-		ImGui::SameLine();
-		ImGuiDCXAxisAlign(cl);
-		ImGui::SetNextItemWidth(wv);
-		if (ImGui::BeginCombo("##UPGRADE_TYPE", upgrade_type_value, 0))
+		if (s.opt_bingen_base_upgradetype_show)
 		{
-			for (int n = 0; n < IM_ARRAYSIZE(upgrade_type_items); n++)
+			ImGui::Text("Upgrate Type");
+			ImGui::SameLine();
+			ImGuiDCXAxisAlign(cl);
+			ImGui::SetNextItemWidth(wv);
+			if (ImGui::BeginCombo("##UPGRADE_TYPE", upgrade_type_value, 0))
 			{
-				const bool is_selected = (upgrade_type_idx == n);
-				if (ImGui::Selectable(upgrade_type_items[n].name, is_selected)) {
-					upgrade_type_idx = n;
-					c.upgrade_type = upgrade_type_items[n].value;
-				}
+				for (int n = 0; n < IM_ARRAYSIZE(upgrade_type_items); n++)
+				{
+					const bool is_selected = (upgrade_type_idx == n);
+					if (ImGui::Selectable(upgrade_type_items[n].name, is_selected)) {
+						upgrade_type_idx = n;
+						c.upgrade_type = upgrade_type_items[n].value;
+					}
 
-				if (is_selected) {
-					ImGui::SetItemDefaultFocus();
+					if (is_selected) {
+						ImGui::SetItemDefaultFocus();
+					}
 				}
+				ImGui::EndCombo();
 			}
-			ImGui::EndCombo();
 		}
 	}
 
-	if (ImGui::CollapsingHeader("Check", ImGuiTreeNodeFlags_DefaultOpen))
+	if (s.opt_bingen_check_show && ImGui::CollapsingHeader("Check", s.opt_bingen_check_expand ? ImGuiTreeNodeFlags_DefaultOpen : 0))
 	{
 		ImGui::Text("Check Type");
 		ImGui::SameLine();
@@ -595,7 +617,7 @@ void ShowBinGenWindow(bool* p_open)
 		utils::HelpMarker("Used for verifying the original IAP bin.");
 	}
 
-	if (ImGui::CollapsingHeader("Encryption"))
+	if (s.opt_bingen_encryption_show && ImGui::CollapsingHeader("Encryption", s.opt_bingen_encryption_expand ? ImGuiTreeNodeFlags_DefaultOpen : 0))
 	{
 		ImGui::Text("Encryption enable");
 		ImGui::SameLine();
@@ -665,7 +687,7 @@ void ShowBinGenWindow(bool* p_open)
 		}
 	}
 
-	if (ImGui::CollapsingHeader("Config exe"))
+	if (s.opt_bingen_configexe_show && ImGui::CollapsingHeader("Config exe", s.opt_bingen_configexe_expand ? ImGuiTreeNodeFlags_DefaultOpen : 0))
 	{
 		ImGui::Text("Configure related options during the upgrade process of the generated tool named \"iap.exe\".");
 
@@ -904,7 +926,7 @@ void ShowBinGenWindow(bool* p_open)
 		ImGui::PopStyleVar();
 	}
 
-	if (ImGui::CollapsingHeader("Choose Bin", ImGuiTreeNodeFlags_DefaultOpen))
+	if (s.opt_bingen_choosebin_show && ImGui::CollapsingHeader("Choose Bin", s.opt_bingen_choosebin_expand ? ImGuiTreeNodeFlags_DefaultOpen : 0))
 	{
 		ImGuiTableFlags flags = ImGuiTableFlags_BordersV | ImGuiTableFlags_BordersOuterH | ImGuiTableFlags_RowBg | ImGuiTableFlags_NoBordersInBody;
 

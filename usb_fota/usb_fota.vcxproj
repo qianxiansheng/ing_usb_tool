@@ -187,10 +187,12 @@
     <ClCompile Include="src\main.cpp" />
     <ClCompile Include="src\passthrough\passthrough.cpp" />
     <ClCompile Include="src\passthrough\usbdevtree.cpp" />
+    <ClCompile Include="src\setting.cpp" />
     <ClCompile Include="src\usb\usb_utils.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\pch.h" />
+    <ClInclude Include="src\setting.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

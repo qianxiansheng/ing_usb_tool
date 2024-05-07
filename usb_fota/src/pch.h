@@ -4,6 +4,7 @@
 
 #define APP_TITLE           "Ingchips USB IAP tool (2nd Bootloader)"
 #define DEFAULT_FONT		"c:\\Windows\\Fonts\\msyh.ttc"
+#define SETTINGS_INI        "settings.ini"
 
 #define EP_MAX_SIZE  64
 #define DATA_INPUT_BUFF_MAX_SIZE 4096

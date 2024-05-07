@@ -29,18 +29,13 @@
 
 #include "imgui/extensions/ImFileDialog.h"
 
+#include "setting.h"
+
 
 #define IMIDTEXT(name, i) ((std::string(name) + std::to_string(i)).c_str())
 
 static bool show_root_window = true;
-static bool opt_fullscreen = true;
-static bool opt_showdemowindow = false;
-static bool opt_showlogwindow = true;
-static bool opt_showusbdevicetreewindow = false;
-static bool opt_showusbsendwindow = false;
-static bool opt_showbingenwindow = true;
-static bool opt_showbinviewerwindow = false;
-static bool opt_showiapwindow = false;
+extern app_settings_t gSettings;
 
 ImVec4 clear_color = ImVec4(0.35f, 0.35f, 0.35f, 1.00f);
 
@@ -85,11 +80,29 @@ static void Cube_WriteAll(ImGuiContext* ctx, ImGuiSettingsHandler* handler, ImGu
 	buf->appendf("export_dir=%s\n", export_dir.generic_string().c_str());
 }
 
+static void LoadSettings()
+{
+	LoadSetting(SETTINGS_INI);
+}
+
+static void SaveSettings() 
+{
+	static long frame_cnt = 0;
+	if (frame_cnt % 100 == 0)
+	{
+		SaveSetting(SETTINGS_INI);
+	}
+	frame_cnt++;
+}
+
 static bool main_init(int argc, char* argv[])
 {
 	// Enable Dock
 	ImGuiIO& io = ImGui::GetIO(); (void)io;
 	io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
+
+	// Load setting
+	LoadSettings();
 
 	// Load ini
 	LoadBinGenINI();
@@ -160,15 +173,17 @@ static void ShowRootWindowMenu()
 
 		if (ImGui::BeginMenu("Option")) {
 
-			ImGui::MenuItem("Demo Window", NULL, &opt_showdemowindow);
-			ImGui::MenuItem("Log Window", NULL, &opt_showlogwindow);
-			ImGui::MenuItem("Binary Viewer", NULL, &opt_showbinviewerwindow);
+			app_settings_t& c = gSettings;
+
+			ImGui::MenuItem("Demo Window", NULL, &c.opt_showdemowindow);
+			ImGui::MenuItem("Log Window", NULL, &c.opt_showlogwindow);
+			ImGui::MenuItem("Binary Viewer", NULL, &c.opt_showbinviewerwindow);
 			ImGui::Separator();
-			ImGui::MenuItem("USB Device tree", NULL, &opt_showusbdevicetreewindow);
-			ImGui::MenuItem("Bin Editor", NULL, &opt_showbingenwindow);
-			ImGui::MenuItem("USB Send", NULL, &opt_showusbsendwindow);
+			ImGui::MenuItem("USB Device tree", NULL, &c.opt_showusbdevicetreewindow);
+			ImGui::MenuItem("Bin Editor", NULL, &c.opt_showbingenwindow);
+			ImGui::MenuItem("USB Send", NULL, &c.opt_showusbsendwindow);
 			ImGui::Separator();
-			ImGui::MenuItem("IAP", NULL, &opt_showiapwindow);
+			ImGui::MenuItem("IAP", NULL, &c.opt_showiapwindow);
 
 			ImGui::EndMenu();
 		}
@@ -178,9 +193,10 @@ static void ShowRootWindowMenu()
 
 static void ShowRootWindow(bool* p_open)
 {
+	app_settings_t& c = gSettings;
 	ImGuiWindowFlags window_flags = ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoDocking;
 
-	if (opt_fullscreen) {
+	if (c.opt_fullscreen) {
 		const ImGuiViewport* viewport = ImGui::GetMainViewport();
 		ImGui::SetNextWindowPos(viewport->WorkPos);
 		ImGui::SetNextWindowSize(viewport->WorkSize);
@@ -194,7 +210,7 @@ static void ShowRootWindow(bool* p_open)
 
 	ImGui::Begin("-", p_open, window_flags);
 
-	if (opt_fullscreen) {
+	if (c.opt_fullscreen) {
 		ImGui::PopStyleVar();	// WindowBorderSize
 		ImGui::PopStyleVar();	// WindowRounding
 	}
@@ -206,32 +222,32 @@ static void ShowRootWindow(bool* p_open)
 	ShowRootWindowMenu();
 
 	ImGui::End();
-	if (opt_showdemowindow) {
-		ImGui::ShowDemoWindow(&opt_showdemowindow);
+	if (c.opt_showdemowindow) {
+		ImGui::ShowDemoWindow(&c.opt_showdemowindow);
 	}
 
-	if (opt_showusbdevicetreewindow) {
-		ShowUSBDeviceTreeWindow(&opt_showusbdevicetreewindow);
+	if (c.opt_showusbdevicetreewindow) {
+		ShowUSBDeviceTreeWindow(&c.opt_showusbdevicetreewindow);
 	}
 
-	if (opt_showusbsendwindow) {
-		ShowUSBSendWindow(&opt_showusbsendwindow);
+	if (c.opt_showusbsendwindow) {
+		ShowUSBSendWindow(&c.opt_showusbsendwindow);
 	}
 
-	if (opt_showbingenwindow) {
-		ShowBinGenWindow(&opt_showbingenwindow);
+	if (c.opt_showbingenwindow) {
+		ShowBinGenWindow(&c.opt_showbingenwindow);
 	}
 
-	if (opt_showlogwindow) {
-		ShowLog(&opt_showlogwindow);
+	if (c.opt_showlogwindow) {
+		ShowLog(&c.opt_showlogwindow);
 	}
 
-	if (opt_showbinviewerwindow) {
-		ShowBinViewer(&opt_showbinviewerwindow);
+	if (c.opt_showbinviewerwindow) {
+		ShowBinViewer(&c.opt_showbinviewerwindow);
 	}
 
-	if (opt_showiapwindow) {
-		ShowIAPWindow(&opt_showiapwindow);
+	if (c.opt_showiapwindow) {
+		ShowIAPWindow(&c.opt_showiapwindow);
 	}
 
 }
@@ -241,6 +257,7 @@ static int main_gui()
 	ShowRootWindow(&show_root_window);
 
 	SaveBinGenINI();
+	SaveSettings();
 
     return 0;
 }
