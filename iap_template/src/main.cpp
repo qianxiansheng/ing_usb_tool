@@ -6,6 +6,10 @@
 #include <unordered_map>
 #include <filesystem>
 #include <sstream>
+#include <future>
+#include <thread>
+#include <chrono>
+#include <atomic>
 
 #include "winbase.h"
 
@@ -20,11 +24,15 @@
 #include "util/myqueue.h"
 #include "util/PEUtils.h"
 
-#include "config.h"
+#include "iap_config.h"
 #include "usb.h"
 #include "iap.h"
+#include "itexture.h"
 
 #include <glad/glad.h>
+
+#define STB_IMAGE_IMPLEMENTATION
+#include "stb_image.h"
 
 #define IMIDTEXT(name, i) ((std::string(name) + std::to_string(i)).c_str())
 
@@ -34,21 +42,33 @@ static bool opt_fullscreen = true;
 static bool alert_flag = false;
 static char alert_message[256] = { 0 };
 static char label_message[256] = { 0 };
+static bool g_auto_start = false;
 
-static bool g_upgrading_flag = false;
+static std::atomic_bool cancel_flag(false);
 static bool g_file_valid_flag = false;
+
+extern iap_config_t iap_config;
+extern std::filesystem::path selfName;
+
+enum {
+	MAINSTATE_IDLE,
+	MAINSTATE_GETDEVINFO,
+	MAINSTATE_IAP_RUNNING,
+	MANISTATE_MONITOR_DEV,
+	MAINSTATE_AUTO_IAP_MODE_IDLE,
+	MAINSTATE_AUTO_IAP_MODE_RUNNING,
+	MAINSTATE_AUTO_IAP_MODE_MONITOR_DEV,
+};
+static std::atomic<int> g_main_state = MAINSTATE_IDLE;
 
 uint32_t progress_limit = 100;
 uint32_t progress_pos = 100;
 
-std::filesystem::path selfName;
+char deviceVersion[5] = "0000";
+char deviceVID[5] = "0000";
+char devicePID[5] = "0000";
 
-std::vector<uint8_t> iap_bin;
-
-std::string iap_bin_soft_version;
-std::string iap_bin_hard_version;
-
-extern iap_config_t iap_config;
+HIDDevice hid = { 0 };
 
 ImVec4 clear_color = ImVec4(0.35f, 0.35f, 0.35f, 1.00f);
 
@@ -58,6 +78,7 @@ enum UIEventTypeEnum
 {
 	UI_EVENT_TYPE_ALERT_MESSAGE = 0x30,
 	UI_EVENT_TYPE_LABEL_MESSAGE = 0x31,
+	UI_EVENT_TYPE_UPDATE_DEVINFO = 0x32,
 	UI_EVENT_TYPE_EXIT = 0xF0,
 };
 
@@ -65,6 +86,9 @@ typedef struct
 {
 	uint32_t eventType;
 
+	uint16_t vid;
+	uint16_t pid;
+	uint16_t releaseVersion;
 	std::string message;
 } UIEvent;
 
@@ -85,6 +109,12 @@ static bool UIThreadEventHandler()
 
 	case UI_EVENT_TYPE_LABEL_MESSAGE:
 		strcpy(label_message, e.message.c_str());
+		break;
+
+	case UI_EVENT_TYPE_UPDATE_DEVINFO:
+		sprintf_s(deviceVID, 5, "%04X", e.vid);
+		sprintf_s(devicePID, 5, "%04X", e.pid);
+		sprintf_s(deviceVersion, 5, "%04X", e.releaseVersion);
 		break;
 
 	case UI_EVENT_TYPE_EXIT:
@@ -123,6 +153,15 @@ static void UIThreadPutEvent_LabelMessage(std::string message)
 	e.message = message;
 	queueUI->put(e);
 }
+static void UIThreadPutEvent_UpdateDeviceInfo(uint16_t vid, uint16_t pid, uint16_t releaseVersion)
+{
+	UIEvent e;
+	e.eventType = UI_EVENT_TYPE_UPDATE_DEVINFO;
+	e.vid = vid;
+	e.pid = pid;
+	e.releaseVersion = releaseVersion;
+	queueUI->put(e);
+}
 static void UIThreadPutEvent_Exit()
 {
 	UIEvent e;
@@ -137,97 +176,21 @@ static void UIThread()
 	}
 }
 
-
-static void SearchDevice(uint16_t vid, uint16_t pid, uint8_t rid, uint32_t milliseconds, HIDDevice* dev)
+static void SearchDevice(std::vector<std::tuple<uint16_t, uint16_t, uint8_t>> vpridList, 
+	uint32_t milliseconds, HIDDevice* dev)
 {
 	auto overTime = std::chrono::system_clock::now() + 
 		std::chrono::milliseconds(milliseconds);
 
-	while (std::chrono::system_clock::now() < overTime)
+	while (!cancel_flag && std::chrono::system_clock::now() < overTime)
 	{
-		if (OpenHIDInterface(vid, pid, rid, dev) == HID_FIND_SUCCESS)
+		if (OpenHIDInterface(vpridList, dev) == HID_FIND_SUCCESS)
 		{
 			printf("report ID:%02X\n", dev->reportId);
 			break;
 		}
 		std::this_thread::sleep_for(std::chrono::milliseconds(500));
 	}
-}
-static void SearchDeviceBootOrAPP(uint16_t bvid, uint16_t bpid, uint16_t avid, uint16_t apid, uint32_t milliseconds, HIDDevice* dev)
-{
-	auto overTime = std::chrono::system_clock::now() +
-		std::chrono::milliseconds(milliseconds);
-
-	while (std::chrono::system_clock::now() < overTime)
-	{
-		if (OpenHIDInterface(bvid, bpid, dev) == HID_FIND_SUCCESS)
-		{
-			printf("report ID:%02X\n", dev->reportId);
-			break;
-		}
-		if (OpenHIDInterface(avid, apid, dev) == HID_FIND_SUCCESS)
-		{
-			printf("report ID:%02X\n", dev->reportId);
-			break;
-		}
-		std::this_thread::sleep_for(std::chrono::milliseconds(500));
-	}
-}
-
-static float takeout_float(uint8_t* buf)
-{
-	return *(float*)buf;
-}
-static uint32_t takeout_32_little(uint8_t* buf)
-{
-	return (buf[0]) | (buf[1] << 8) | (buf[2] << 16) | (buf[3] << 24);
-}
-static uint32_t takeout_16_little(uint8_t* buf)
-{
-	return (buf[0]) | (buf[1] << 8);
-}
-static uint32_t takeout_8_little(uint8_t* buf)
-{
-	return (buf[0]);
-}
-
-float iconTextureWidth;
-float iconTextureHeight;
-ImTextureID iconTextureID;
-
-static void LoadIconTexture()
-{
-	std::vector<uint8_t> self = utils::readFileData(selfName);
-
-	int size = 128;
-
-	std::vector<uint8_t> icon;
-	LoadIconByPE(self.data(), icon, size);
-	std::vector<uint8_t> dst = icon;
-
-	size_t w = static_cast<size_t>(size);
-	size_t h = static_cast<size_t>(size);
-	for (size_t i = 0; i < h; ++i) {
-		for (size_t j = 0; j < w; ++j) {
-			size_t d = ((i * w) + j) * 4;
-			size_t s = (((h - 1 - i) * w) + j) * 4;
-			dst[d + 0] = icon[s + 2];
-			dst[d + 1] = icon[s + 1];
-			dst[d + 2] = icon[s + 0];
-			dst[d + 3] = icon[s + 3];
-		}
-	}
-
-	GLuint textureID;
-	glGenTextures(1, &textureID);
-	glBindTexture(GL_TEXTURE_2D, textureID);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, dst.data());
-
-	iconTextureWidth = static_cast<float>(w);
-	iconTextureHeight = static_cast<float>(h);
-	iconTextureID = reinterpret_cast<void*>(static_cast<uintptr_t>(textureID));
 }
 
 static ImVec4 dark(const ImVec4 v, float n)
@@ -243,171 +206,17 @@ static ImVec4 dark(const ImVec4 v, float n)
 static void LoadStyle()
 {
 	auto& style = ImGui::GetStyle();
-	style.Colors[ImGuiCol_Text] = iap_config.color0;
-	style.Colors[ImGuiCol_WindowBg] = iap_config.color1;
-	style.Colors[ImGuiCol_Button] = iap_config.color2;
-	style.Colors[ImGuiCol_ButtonHovered] = iap_config.color3;
-	style.Colors[ImGuiCol_ButtonActive] = iap_config.color4;
-	style.Colors[ImGuiCol_PlotHistogram] = iap_config.color5;
-	style.Colors[ImGuiCol_FrameBg] = iap_config.color6;
-	style.Colors[ImGuiCol_PopupBg] = iap_config.color1;
-	style.Colors[ImGuiCol_TitleBgActive] = dark(iap_config.color1, 0.1f);
+	style.Colors[ImGuiCol_Text] = iap_config.color[0];
+	style.Colors[ImGuiCol_WindowBg] = iap_config.color[1];
+	style.Colors[ImGuiCol_Button] = iap_config.color[2];
+	style.Colors[ImGuiCol_ButtonHovered] = iap_config.color[3];
+	style.Colors[ImGuiCol_ButtonActive] = iap_config.color[4];
+	style.Colors[ImGuiCol_PlotHistogram] = iap_config.color[5];
+	style.Colors[ImGuiCol_FrameBg] = iap_config.color[6];
+	style.Colors[ImGuiCol_PopupBg] = iap_config.color[1];
+	style.Colors[ImGuiCol_TitleBgActive] = dark(iap_config.color[1], 0.1f);
 }
 
-static void LoadData()
-{
-	uint32_t size = (uint32_t)std::filesystem::file_size(selfName);
-	printf("exe size:%d\n", size);
-
-	std::vector<uint8_t> self = utils::readFileData(selfName);
-
-	uint32_t N = 0;
-	uint32_t N_ = 0;
-
-	uint8_t* self_data = self.data();
-	uint32_t self_size = (uint32_t)self.size();
-	uint32_t k = self_size;
-	k -= 4;
-	if (takeout_32_little(&self_data[k]) == IAP_GEN_EXE_SUFFIX)
-	{
-		k -= 4;
-		N = takeout_32_little(&self_data[k]);
-		N_ = self_size - N - 38 - 160;
-
-		k -= 4; iap_config.color9.w = takeout_float(&self_data[k]);
-		k -= 4; iap_config.color9.z = takeout_float(&self_data[k]);
-		k -= 4; iap_config.color9.y = takeout_float(&self_data[k]);
-		k -= 4; iap_config.color9.x = takeout_float(&self_data[k]);
-
-		k -= 4; iap_config.color8.w = takeout_float(&self_data[k]);
-		k -= 4; iap_config.color8.z = takeout_float(&self_data[k]);
-		k -= 4; iap_config.color8.y = takeout_float(&self_data[k]);
-		k -= 4; iap_config.color8.x = takeout_float(&self_data[k]);
-
-		k -= 4; iap_config.color7.w = takeout_float(&self_data[k]);
-		k -= 4; iap_config.color7.z = takeout_float(&self_data[k]);
-		k -= 4; iap_config.color7.y = takeout_float(&self_data[k]);
-		k -= 4; iap_config.color7.x = takeout_float(&self_data[k]);
-
-		k -= 4; iap_config.color6.w = takeout_float(&self_data[k]);
-		k -= 4; iap_config.color6.z = takeout_float(&self_data[k]);
-		k -= 4; iap_config.color6.y = takeout_float(&self_data[k]);
-		k -= 4; iap_config.color6.x = takeout_float(&self_data[k]);
-
-		k -= 4; iap_config.color5.w = takeout_float(&self_data[k]);
-		k -= 4; iap_config.color5.z = takeout_float(&self_data[k]);
-		k -= 4; iap_config.color5.y = takeout_float(&self_data[k]);
-		k -= 4; iap_config.color5.x = takeout_float(&self_data[k]);
-
-		k -= 4; iap_config.color4.w = takeout_float(&self_data[k]);
-		k -= 4; iap_config.color4.z = takeout_float(&self_data[k]);
-		k -= 4; iap_config.color4.y = takeout_float(&self_data[k]);
-		k -= 4; iap_config.color4.x = takeout_float(&self_data[k]);
-
-		k -= 4; iap_config.color3.w = takeout_float(&self_data[k]);
-		k -= 4; iap_config.color3.z = takeout_float(&self_data[k]);
-		k -= 4; iap_config.color3.y = takeout_float(&self_data[k]);
-		k -= 4; iap_config.color3.x = takeout_float(&self_data[k]);
-
-		k -= 4; iap_config.color2.w = takeout_float(&self_data[k]);
-		k -= 4; iap_config.color2.z = takeout_float(&self_data[k]);
-		k -= 4; iap_config.color2.y = takeout_float(&self_data[k]);
-		k -= 4; iap_config.color2.x = takeout_float(&self_data[k]);
-
-		k -= 4; iap_config.color1.w = takeout_float(&self_data[k]);
-		k -= 4; iap_config.color1.z = takeout_float(&self_data[k]);
-		k -= 4; iap_config.color1.y = takeout_float(&self_data[k]);
-		k -= 4; iap_config.color1.x = takeout_float(&self_data[k]);
-
-		k -= 4; iap_config.color0.w = takeout_float(&self_data[k]);
-		k -= 4; iap_config.color0.z = takeout_float(&self_data[k]);
-		k -= 4; iap_config.color0.y = takeout_float(&self_data[k]);
-		k -= 4; iap_config.color0.x = takeout_float(&self_data[k]);
-
-		k -= 4; iap_config.readAckTimeout = takeout_32_little(&self_data[k]);
-		k -= 4; iap_config.searchDeviceTimeout = takeout_32_little(&self_data[k]);
-		k -= 4; iap_config.switchDelay = takeout_32_little(&self_data[k]);
-		k -= 4; iap_config.rebootDelay = takeout_32_little(&self_data[k]);
-		k -= 4; iap_config.retryNum = takeout_32_little(&self_data[k]);
-		k -= 1; iap_config.app_rid = takeout_8_little(&self_data[k]);
-		k -= 2; iap_config.app_pid = takeout_16_little(&self_data[k]);
-		k -= 2; iap_config.app_vid = takeout_16_little(&self_data[k]);
-		k -= 1; iap_config.boot_rid = takeout_8_little(&self_data[k]);
-		k -= 2; iap_config.boot_pid = takeout_16_little(&self_data[k]);
-		k -= 2; iap_config.boot_vid = takeout_16_little(&self_data[k]);
-
-		printf("boot vid:0x%04X\n", iap_config.boot_vid);
-		printf("boot pid:0x%04X\n", iap_config.boot_pid);
-		printf("boot rid:0x%04X\n", iap_config.boot_rid);
-		printf("app  vid:0x%04X\n", iap_config.app_vid);
-		printf("app  pid:0x%04X\n", iap_config.app_pid);
-		printf("app  rid:0x%04X\n", iap_config.app_rid);
-		printf("retryNum:%d\n", iap_config.retryNum);
-		printf("rebootDelay:%d\n", iap_config.rebootDelay);
-		printf("switchDelay:%d\n", iap_config.switchDelay);
-		printf("searchDeviceTimeout:%d\n", iap_config.searchDeviceTimeout);
-		printf("readAckTimeout:%d\n", iap_config.readAckTimeout);
-
-
-		iap_bin.resize(N_);
-		memcpy(iap_bin.data(), self_data + N, N_);
-
-		iap_bin_hard_version = std::string((char*)iap_bin.data() + 48, 6);
-		iap_bin_soft_version = std::string((char*)iap_bin.data() + 54, 6);
-
-		g_file_valid_flag = true;
-	}
-	else
-	{
-		iap_config.color0 = ImVec4(0, 0, 0, 1.0f);
-		iap_config.color1 = ImVec4(0.941176f, 0.941176f, 0.941176f, 1.0f);
-		iap_config.color2 = ImVec4(0.258824f, 0.588235f, 0.980392f, 0.4f);
-		iap_config.color3 = ImVec4(0.258824f, 0.588235f, 0.980392f, 1.0f);
-		iap_config.color4 = ImVec4(0.0588235f, 0.529412f, 0.980392f, 1.0f);
-		iap_config.color5 = ImVec4(0.901961f, 0.701961f, 0, 1.0f);
-		iap_config.color6 = ImVec4(1.0f, 1.0f, 1.0f, 1.0f);
-		iap_config.color7 = ImVec4(1.0f, 1.0f, 1.0f, 1.0f);
-		iap_config.color8 = ImVec4(1.0f, 1.0f, 1.0f, 1.0f);
-		iap_config.color9 = ImVec4(1.0f, 1.0f, 1.0f, 1.0f);
-
-		UIThreadPutEvent_LabelMessage("File corruption!\nPlease regenerate the upgrade tool.");
-		UIThreadPutEvent_AlertMessage("File corruption!\nPlease regenerate the upgrade tool.");
-		g_file_valid_flag = false;
-	}
-}
-
-static void LoadData0()
-{
-	std::filesystem::path binName("D:\\myResource\\work\\c++\\ing_usb_fota\\ing_usb_fota\\usb_fota\\output\\INGIAP.bin");
-	auto data = utils::readFileData(binName);
-
-	iap_config.readAckTimeout = 1000;
-	iap_config.searchDeviceTimeout = 8000;
-	iap_config.switchDelay = 1000;
-	iap_config.rebootDelay = 1000;
-	iap_config.retryNum = 3;
-	iap_config.app_rid = 0x2F;
-	iap_config.app_pid = 0x0102;
-	iap_config.app_vid = 0x36B0;
-	iap_config.boot_rid = 0x3F;
-	iap_config.boot_pid = 0x3002;
-	iap_config.boot_vid = 0x36B0;
-	iap_config.color0 = ImVec4(0, 0, 0, 1.0f);
-	iap_config.color1 = ImVec4(0.941176f, 0.941176f, 0.941176f, 1.0f);
-	iap_config.color2 = ImVec4(0.258824f, 0.588235f, 0.980392f, 0.4f);
-	iap_config.color3 = ImVec4(0.258824f, 0.588235f, 0.980392f, 1.0f);
-	iap_config.color4 = ImVec4(0.0588235f, 0.529412f, 0.980392f, 1.0f);
-	iap_config.color5 = ImVec4(0.901961f, 0.701961f, 0, 1.0f);
-
-	iap_bin = data;
-
-	iap_bin_hard_version = std::string((char*)iap_bin.data() + 48, 6);
-	iap_bin_soft_version = std::string((char*)iap_bin.data() + 54, 6);
-
-	g_file_valid_flag = true;
-
-	
-}
 
 extern IAPContext iap_ctx;
 #define showLabel UIThreadPutEvent_LabelMessage
@@ -420,98 +229,49 @@ void onbusinessOk(IAPContext& ctx)
 	progress_limit = ctx.bin_size_limit;
 	progress_pos   = ctx.bin_size_pos;
 }
-static void IAPThread()
+
+static void IAPProcess()
 {
 	showLabel("Open Device...");
-	HIDDevice hid = { 0 };
-	SearchDeviceBootOrAPP(
-		iap_config.boot_vid, iap_config.boot_pid,
-		iap_config.app_vid,  iap_config.app_pid,
-		iap_config.searchDeviceTimeout, &hid);
 
-	uint8_t* header = iap_bin.data();
-	uint16_t block_size = header[66] + (header[67] << 8);
-
-	bool openAPP = false;
+	SearchDevice(iap_config.vpidEntryTable, iap_config.searchDeviceTimeout, &hid);
 
 	if (hid.phandle == NULL)
 	{
 		showLabel("Open Failed!");
-		g_upgrading_flag = false;
 		return;
 	}
 	else
 	{
-		if (hid.reportId == iap_config.boot_rid)
-		{
-			showLabel("Open Success! BOOT");
-		}
-		else
-		{
-			openAPP = true;
-			showLabel("Open Success! APP");
-		}
+		showLabel("Open Success! BOOT");
 	}
 
-	if (openAPP)
-	{
-		InitIAPContext(hid, iap_bin, block_size, 
-			iap_config.retryNum, 
-			iap_config.switchDelay,
-			iap_config.switchDelay,
-			onbusinessOk, &iap_ctx);
-		iap_run_switch_boot(iap_ctx);
-		if (iap_ctx.primary_status == IAP_STATUS_COMPLETE)
-		{
-			CloseHIDInterface(hid);
-			hid.phandle = NULL;
-			showLabel("Send switch BOOT Success.");
-			SearchDevice(iap_config.boot_vid, iap_config.boot_pid, 
-				iap_config.boot_rid, iap_config.searchDeviceTimeout, &hid);
+	uint8_t* header = iap_config.iap_bin.data();
+	uint16_t block_size = header[66] + (header[67] << 8);
 
-			if (hid.phandle == NULL)
-			{
-				showAlert_("Open BOOT Failed!");
-				g_upgrading_flag = false;
-				return;
-			}
-			else
-			{
-				showLabel("Open Success! BOOT");
-			}
-		}
-		else
-		{
-			CloseHIDInterface(hid);
-			showAlert_("Send switch APP Failed.");
-			g_upgrading_flag = false;
-			return;
-		}
-	}
-
-	InitIAPContext(hid, iap_bin, block_size, 
-		iap_config.retryNum, 
-		iap_config.readAckTimeout, 
-		iap_config.switchDelay, 
+	InitIAPContext(hid, iap_config.iap_bin, block_size,
+		iap_config.retryNum,
+		iap_config.readAckTimeout,
+		iap_config.switchDelay,
 		onbusinessOk, &iap_ctx);
 	try {
 		iap_run(iap_ctx);
-	} catch (std::exception) {
-		showAlert_("The device has been lost.");
+	}
+	catch (std::exception& e) {
+		showAlert_(e.what());
 		CloseHIDInterface(hid);
-		g_upgrading_flag = false;
 		return;
 	}
 	if (iap_ctx.primary_status == IAP_STATUS_COMPLETE)
 	{
-		showAlert_("Upgrade completed.");
+		showAlert_("PASS");
 	}
 	else
 	{
 		if (iap_ctx.terinmateReason == IAP_TERMINATE_REASON_PROTOCOL_ERROR)
 		{
 			char buf[128] = { 0 };
-			sprintf(buf, "Upgrade error, please try again.\nError code:0x%02X\n%s", 
+			sprintf(buf, "Upgrade error, please try again.\nError code:0x%02X\n%s",
 				iap_ctx.ackCode, iap_ack_str(iap_ctx.ackCode).c_str());
 			showAlert_(buf);
 		}
@@ -525,8 +285,62 @@ static void IAPThread()
 		}
 	}
 	CloseHIDInterface(hid);
-	g_upgrading_flag = false;
 }
+
+static void DeviceInfoThread()
+{
+	if (g_main_state != MAINSTATE_IDLE)
+		return;
+	g_main_state = MAINSTATE_GETDEVINFO;
+
+	showAlert_("...");
+	try {
+		uint16_t vid, pid, release;
+		if (GetUSBDeviceInfo(iap_config.vpidEntryTable, &vid, &pid, &release)) {
+			UIThreadPutEvent_UpdateDeviceInfo(vid, pid, release);
+			showAlert_("OK");
+		} else {
+			showAlert_("FAILED");
+		}
+	} catch (std::exception& e) {
+		showAlert_("FAILED");
+	}
+
+	g_main_state = MAINSTATE_IDLE;
+}
+
+static void IAPThread()
+{
+	if (g_main_state != MAINSTATE_IDLE)
+		return;
+	g_main_state = MAINSTATE_IAP_RUNNING;
+
+	IAPProcess();
+
+	g_main_state = MAINSTATE_IDLE;
+}
+
+static void AutoIAPThread()
+{
+	if (g_main_state != MAINSTATE_IDLE)
+		return;
+	g_main_state = MAINSTATE_AUTO_IAP_MODE_IDLE;
+
+	while (g_auto_start) {
+		g_main_state = MAINSTATE_AUTO_IAP_MODE_RUNNING;
+		IAPProcess();
+		g_main_state = MAINSTATE_AUTO_IAP_MODE_IDLE;
+		std::this_thread::sleep_for(std::chrono::milliseconds(2000));
+	}
+
+	g_main_state = MAINSTATE_IDLE;
+}
+
+static void DevMoniterThread()
+{
+	
+}
+
 
 bool main_init(int argc, char* argv[])
 {
@@ -536,12 +350,13 @@ bool main_init(int argc, char* argv[])
 	io.LogFilename = NULL;
 
 	selfName = argv[0];
+	// selfName = "D:\\myResource\\work\\c++\\ing_usb_fota\\ing_usb_fota\\usb_fota\\output\\iap.exe";
 
 	// Theme
 	ImGui::StyleColorsLight();
 
 	// Font
-	io.Fonts->AddFontFromFileTTF(DEFAULT_FONT, 18.0f, NULL, io.Fonts->GetGlyphRangesChineseFull());
+	io.Fonts->AddFontFromFileTTF(DEFAULT_FONT, 36.0f, NULL, io.Fonts->GetGlyphRangesChineseFull());
 
 	// Thread pool
 	pool = new ThreadPool(10);
@@ -551,7 +366,13 @@ bool main_init(int argc, char* argv[])
 	pool->enqueue(UIThread);
 
 	// IAP bin data
-	LoadData();
+	if (!LoadData()) {
+		UIThreadPutEvent_LabelMessage("File corruption!\nPlease regenerate the tool.");
+		UIThreadPutEvent_AlertMessage("File corruption!\nPlease regenerate the tool.");
+	}
+	else {
+		g_file_valid_flag = true;
+	}
 
 	// Style
 	LoadStyle();
@@ -570,57 +391,279 @@ void main_shutdown(void)
 {
 	UIThreadPutEvent_Exit();
 	stop = true;
-	delete pool;
+	cancel_flag = true;
+	// delete pool;
 	HIDExit();
 }
 
-static void ShowRootWindowProgress(void)
-{
-	ImVec2 contentRegionAvail = ImGui::GetContentRegionAvail();
-	ImGuiWindow* window = ImGui::GetCurrentWindow();
-	{
-		ImGui::BeginGroup();
-		{
-			ImGui::Image(iconTextureID, ImVec2(iconTextureWidth, iconTextureHeight));
-		}
-		ImGui::EndGroup();
-		ImGui::SameLine();
-		ImGui::BeginGroup();
-		{
-			float ih = ImGui::CalcTextSize("V").y * 3;
-			float th = ih > iconTextureHeight ? ih : iconTextureHeight;
+#ifndef IMGUI_DEFINE_MATH_OPERATORS
+static ImVec2 operator+(const ImVec2& a, const ImVec2& b) {
+	return ImVec2(a.x + b.x, a.y + b.y);
+}
+#endif
 
-			ImVec2 pos = ImGui::GetCursorScreenPos();
-			ImGui::SetCursorScreenPos(ImVec2(pos.x, pos.y + ((th - ih) * 0.5f)));
-			ImGui::Text("VID:%04X", iap_config.boot_vid);
-			ImGui::Text("PID:%04X", iap_config.boot_pid);
-			ImGui::Text("VER:%s", iap_bin_soft_version.c_str());
-		}
-		ImGui::EndGroup();
+static void DrawImage(int key, float alpha) {
+	ImGuiWindow* window = ImGui::GetCurrentWindow();
+	ImVec2 p = window->DC.CursorPos;
+	auto& [pos, size] = iap_config.gResourceLayoutMap[key];
+	window->DrawList->AddImage(iap_config.gResourceMap[key]->_texID,
+		p + pos,
+		p + pos + size, ImVec2(0, 0), ImVec2(1, 1), ImGui::GetColorU32(ImVec4(1.0f, 1.0f, 1.0f, alpha)));
+}
+static void DrawImage(int key) {
+	DrawImage(key, 1.0f);
+}
+
+static bool RDRImageCheckbox(const char* label, int key, int key_checked, bool* v)
+{
+	ImGuiWindow* window = ImGui::GetCurrentWindow();
+	ImVec2 p = window->DC.CursorPos;
+	if (window->SkipItems)
+		return false;
+
+	ImGuiContext& g = *GImGui;
+	const ImGuiStyle& style = g.Style;
+	const ImGuiID id = window->GetID(label);
+
+	auto& [pos, size] = iap_config.gResourceLayoutMap[key];
+
+	const ImRect total_bb(p + pos, p + pos + size);
+	ImGui::ItemSize(total_bb, style.FramePadding.y);
+	if (!ImGui::ItemAdd(total_bb, id))
+	{
+		return false;
 	}
 
-	const float progress_global_size = contentRegionAvail.x;
+	bool hovered, held;
+	bool pressed = ImGui::ButtonBehavior(total_bb, id, &hovered, &held);
+	if (pressed)
+	{
+		*v = !(*v);
+		ImGui::MarkItemEdited(id);
+	}
+	const int col = *v ? key_checked : key;
+
+	// Reset
+	ImGui::SetCursorPos(ImVec2(0.0f, 0.0f));
+
+	DrawImage(col, g.Style.Alpha);
+
+	return pressed;
+}
+
+static bool RDRImageButton(const char* label, int key, int key_hover, int key_active)
+{
+	ImGuiWindow* window = ImGui::GetCurrentWindow();
+	if (window->SkipItems)
+		return false;
+
+	ImGuiContext& g = *GImGui;
+	const ImGuiID id = window->GetID(label);
+
+	ImVec2 p = window->DC.CursorPos;
+	auto& [pos, size] = iap_config.gResourceLayoutMap[key];
+	const ImRect bb(p + pos, p + pos + size);
+	ImGui::ItemSize(size);
+	if (!ImGui::ItemAdd(bb, id))
+		return false;
+
+	bool hovered, held;
+	bool pressed = ImGui::ButtonBehavior(bb, id, &hovered, &held, 0);
+
+	// Reset
+	ImGui::SetCursorPos(ImVec2(0.0f, 0.0f));
+	
+	// Render
+	const int col = (held && hovered) ? key_active : hovered ? key_hover : key;
+	DrawImage(col, g.Style.Alpha);
+
+	return pressed;
+}
+
+static void RDRProgress(float fraction, ImVec2 pos, ImVec2 size)
+{
+	ImGuiWindow* window = ImGui::GetCurrentWindow();
+	ImVec2 p = window->DC.CursorPos;
+
+	ImVec2 rsize = ImVec2(size.x * fraction, size.y);
+	window->DrawList->AddRectFilled(p + pos, p + pos + rsize, ImGui::GetColorU32(ImGuiCol_PlotHistogram));
+	window->DrawList->AddRectFilled(p + pos, p + pos + size, ImGui::GetColorU32(ImGuiCol_FrameBg));
+}
+
+static void TextCentered(const char* text, ImVec2 lt, ImVec2 rb)
+{
+	ImGuiWindow* window = ImGui::GetCurrentWindow();
+	ImVec2 p = window->DC.CursorPos;
+	std::vector<uint16_t> lnList;
+
+	const char* pText = text;
+
+	size_t text_index = 0;
+	size_t text_length = strlen(text);
+
+	size_t line_begin_index = text_index;
+
+	float wrap_width = rb.x - lt.x;
+	float line_text_width = 0.0f;
+
+	auto h = ImGui::GetTextLineHeight();
+
+	// Calc lnList(line list)
+	while (text_index < text_length)
+	{
+		ImVec2 text_size = ImGui::CalcTextSize(pText + text_index, pText + text_index + 1);
+
+		line_text_width += text_size.x;
+
+		if (*(pText + text_index) == '\n')
+		{
+			auto lnDescriptor = (line_begin_index << 8) | text_index;
+			lnList.push_back((uint16_t)lnDescriptor);
+
+			text_index++;
+
+			line_text_width = 0;
+			line_begin_index = text_index;
+		}
+
+		if (line_text_width > wrap_width)
+		{
+			auto lnDescriptor = (line_begin_index << 8) | text_index;
+			lnList.push_back((uint16_t)lnDescriptor);
+
+			line_text_width = 0;
+			line_begin_index = text_index;
+		}
+		text_index++;
+	}
+	auto lnDescriptor = (line_begin_index << 8) | text_index;
+	lnList.push_back((uint16_t)lnDescriptor);
+
+	ImVec2 cursor;
+
+	// Draw line
+	for (size_t i = 0; i < lnList.size(); ++i)
+	{
+		uint16_t& lnDescriptor = lnList[i];
+
+		uint8_t line_begin_index = (lnDescriptor >> 8) & 0xFF;
+		uint8_t line_end_index = lnDescriptor & 0xFF;
+
+		float text_size_y = lnList.size() * h;
+		float line_size_x = ImGui::CalcTextSize(pText + line_begin_index, pText + line_end_index).x;
+
+		// Centered horizontal and vertical alignment
+		cursor.y = p.y + (lt.y + rb.y) / 2 - text_size_y / 2 + i * h;
+		cursor.x = p.x + (lt.x + rb.x) / 2 - line_size_x / 2;
+
+		window->DrawList->AddText(cursor, ImGui::GetColorU32(ImGuiCol_Text), pText + line_begin_index, pText + line_end_index);
+	}
+}
+
+static void DrawProgress()
+{
+	ImGuiWindow* window = ImGui::GetCurrentWindow();
+	ImVec2 p = window->DC.CursorPos;
+
 	float progress_global = (float)progress_pos / progress_limit;
 	float progress_global_saturated = std::clamp(progress_global, 0.0f, 1.0f);
 	char buf_global[32];
-	sprintf(buf_global, "%d/%d", (int)(progress_global_saturated * progress_limit), progress_limit);
-	ImGui::ProgressBar(progress_global, ImVec2(progress_global_size, 0.f), buf_global);
-	ImGui::Text(label_message);
+	sprintf(buf_global, "%d%%", (int)(progress_global_saturated * 100.0f));
 
-	if (g_upgrading_flag || !g_file_valid_flag)
+	auto& [pos, size] = iap_config.gResourceLayoutMap[RSRC_PROGRESS];
+
+	ImGui::PushStyleColor(ImGuiCol_PlotHistogram, ImVec4(0.0f, 1.0f, 0.0f, 1.0f));
+	ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.0f, 1.0f, 0.0f, 0.5f));
+	RDRProgress(progress_global, pos, size);
+	ImGui::PopStyleColor();
+	ImGui::PopStyleColor();
+
+	ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 1.0f, 1.0f, 1.0f));
+	TextCentered(buf_global, pos, pos + size);
+	ImGui::PopStyleColor();
+}
+
+static void DrawTips()
+{
+	ImGuiWindow* window = ImGui::GetCurrentWindow();
+	ImVec2 p = window->DC.CursorPos;
+
+	auto& [pos, size] = iap_config.gResourceLayoutMap[RSRC_TIPS];
+
+	ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 1.0f, 1.0f, 1.0f));
+	TextCentered(label_message, pos, pos + size);
+	ImGui::PopStyleColor();
+}
+
+static void ShowRootWindowFileCorruption(void)
+{
+	ImVec2 pos(0.0f, 0.0f);
+	ImVec2 size(600.0f, 400.0f);
+	TextCentered(label_message, pos, pos + size);
+	utils::AlertEx(&alert_flag, "MSG", alert_message);
+}
+
+static void ShowRootWindowProgress_v2(void)
+{
+	DrawImage(RSRC_IMG_BG);
+	DrawImage(RSRC_IMG_LOGO);
+	DrawImage(RSRC_IMG_VID);
+	DrawImage(RSRC_IMG_PID);
+	DrawImage(RSRC_IMG_VER);
+
+	ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 1.0f, 1.0f, 1.0f));
+	ImGui::SetWindowFontScale(0.8f);
 	{
-		ImGui::BeginDisabled();
-		ImGui::Button("Start", ImVec2(contentRegionAvail.x, 50.0f));
-		ImGui::EndDisabled();
+		DrawImage(RSRC_IMG_TEXT_INPUT_VID);
+		auto& [pos, size] = iap_config.gResourceLayoutMap[RSRC_IMG_TEXT_INPUT_VID];
+		TextCentered(deviceVID, pos, pos + size);
 	}
-	else
 	{
-		if (ImGui::Button("Start", ImVec2(contentRegionAvail.x, 50.0f)))
-		{
-			g_upgrading_flag = true;
-			pool->enqueue(IAPThread);
-		}
+		DrawImage(RSRC_IMG_TEXT_INPUT_PID);
+		auto& [pos, size] = iap_config.gResourceLayoutMap[RSRC_IMG_TEXT_INPUT_PID];
+		TextCentered(devicePID, pos, pos + size);
 	}
+	{
+		DrawImage(RSRC_IMG_TEXT_INPUT_VER);
+		auto& [pos, size] = iap_config.gResourceLayoutMap[RSRC_IMG_TEXT_INPUT_VER];
+		TextCentered(deviceVersion, pos, pos + size);
+	}
+	ImGui::SetWindowFontScale(1.0f);
+	ImGui::PopStyleColor();
+
+	DrawProgress();
+	DrawTips();
+
+#define DISABLED_BEGIN(test) if ((test)) ImGui::BeginDisabled();
+#define DISABLED_END(test) if ((test)) ImGui::EndDisabled();
+
+	bool disableDevInfo = g_main_state != MAINSTATE_IDLE;
+	bool disableStart = g_main_state != MAINSTATE_IDLE || !g_file_valid_flag;
+	bool disableAutoStart = g_main_state != MAINSTATE_IDLE && g_main_state != MAINSTATE_AUTO_IAP_MODE_IDLE;
+
+	DISABLED_BEGIN(disableDevInfo);
+	if (RDRImageButton("DEVINFO", RSRC_IMG_DEVINFO, RSRC_IMG_DEVINFO_HOVERED, RSRC_IMG_DEVINFO_ACTIVE)) {
+		pool->enqueue(DeviceInfoThread);
+	}
+	DISABLED_END(disableDevInfo);
+
+	DISABLED_BEGIN(disableStart);
+	if (RDRImageButton("START", RSRC_IMG_START, RSRC_IMG_START_HOVERED, RSRC_IMG_START_ACTIVE))
+	{
+		pool->enqueue(IAPThread);
+	}
+	DISABLED_END(disableStart);
+
+	DISABLED_BEGIN(disableAutoStart);
+	bool last = g_auto_start;
+	if (RDRImageButton("AUTOSTART", RSRC_IMG_AUTO_START, RSRC_IMG_AUTO_START_HOVERED, RSRC_IMG_AUTO_START_ACTIVE)) {
+		g_auto_start = !g_auto_start;
+	}
+	RDRImageCheckbox("AUTO_START_CHECKBOX", RSRC_IMG_BOX, RSRC_IMG_BOX_CHECKED, &g_auto_start);
+	if (g_auto_start != last) {
+		pool->enqueue(AutoIAPThread);
+	}
+	DISABLED_END(disableAutoStart);
 }
 
 static void ShowRootWindow(bool* p_open)
@@ -647,9 +690,12 @@ static void ShowRootWindow(bool* p_open)
 	}
 	ImGui::PopStyleVar();	// WindowPadding
 
-	ShowRootWindowProgress();
-
-	utils::AlertEx(&alert_flag, "MSG", alert_message);
+	//ShowRootWindowProgress();
+	if (!g_file_valid_flag) {
+		ShowRootWindowFileCorruption();
+	} else {
+		ShowRootWindowProgress_v2();
+	}
 
 	ImGui::End();
 }

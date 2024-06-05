@@ -31,7 +31,6 @@
 
 #include "setting.h"
 
-
 #define IMIDTEXT(name, i) ((std::string(name) + std::to_string(i)).c_str())
 
 static bool show_root_window = true;

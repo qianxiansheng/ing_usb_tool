@@ -93,7 +93,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_SILENCE_CXX17_CODECVT_HEADER_DEPRECATION_WARNING;_SILENCE_CXX17_RESULT_OF_DEPRECATION_WARNING;_CRT_SECURE_NO_WARNINGS;WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(ProjectDir)src;$(SolutionDir)common;$(SolutionDir)common\imgui;$(SolutionDir)common\imgui\backends;$(SolutionDir)common\imgui\extensions;$(SolutionDir)dependence\glfw\include;$(SolutionDir)dependence\libusb\include;$(SolutionDir)..\..\PE\PETool\src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)src;$(ProjectDir)src\imgui;$(ProjectDir)src\imgui\backends;$(ProjectDir)src\imgui\extensions;$(SolutionDir)common;$(SolutionDir)dependence\glfw\include;$(SolutionDir)dependence\libusb\include;$(SolutionDir)..\..\PE\PETool\src;$(SolutionDir)usb_fota\src\glad;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Link>
@@ -111,7 +111,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_SILENCE_CXX17_CODECVT_HEADER_DEPRECATION_WARNING;_SILENCE_CXX17_RESULT_OF_DEPRECATION_WARNING;_CRT_SECURE_NO_WARNINGS;WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(ProjectDir)src;$(SolutionDir)common;$(SolutionDir)common\imgui;$(SolutionDir)common\imgui\backends;$(SolutionDir)common\imgui\extensions;$(SolutionDir)dependence\glfw\include;$(SolutionDir)dependence\libusb\include;$(SolutionDir)..\..\PE\PETool\src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)src;$(ProjectDir)src\imgui;$(ProjectDir)src\imgui\backends;$(ProjectDir)src\imgui\extensions;$(SolutionDir)common;$(SolutionDir)dependence\glfw\include;$(SolutionDir)dependence\libusb\include;$(SolutionDir)..\..\PE\PETool\src;$(SolutionDir)usb_fota\src\glad;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <WholeProgramOptimization>false</WholeProgramOptimization>
     </ClCompile>
@@ -130,7 +130,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_SILENCE_CXX17_CODECVT_HEADER_DEPRECATION_WARNING;_SILENCE_CXX17_RESULT_OF_DEPRECATION_WARNING;_CRT_SECURE_NO_WARNINGS;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(ProjectDir)src;$(SolutionDir)common;$(SolutionDir)common\imgui;$(SolutionDir)common\imgui\backends;$(SolutionDir)common\imgui\extensions;$(SolutionDir)dependence\glfw\include;$(SolutionDir)dependence\libusb\include;$(SolutionDir)..\..\PE\PETool\src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)src;$(ProjectDir)src\imgui;$(ProjectDir)src\imgui\backends;$(ProjectDir)src\imgui\extensions;$(SolutionDir)common;$(SolutionDir)dependence\glfw\include;$(SolutionDir)dependence\libusb\include;$(SolutionDir)..\..\PE\PETool\src;$(SolutionDir)usb_fota\src\glad;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Link>
@@ -149,7 +149,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_SILENCE_CXX17_CODECVT_HEADER_DEPRECATION_WARNING;_SILENCE_CXX17_RESULT_OF_DEPRECATION_WARNING;_CRT_SECURE_NO_WARNINGS;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(ProjectDir)src;$(SolutionDir)common;$(SolutionDir)common\imgui;$(SolutionDir)common\imgui\backends;$(SolutionDir)common\imgui\extensions;$(SolutionDir)dependence\glfw\include;$(SolutionDir)dependence\libusb\include;$(SolutionDir)..\..\PE\PETool\src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)src;$(ProjectDir)src\imgui;$(ProjectDir)src\imgui\backends;$(ProjectDir)src\imgui\extensions;$(SolutionDir)common;$(SolutionDir)dependence\glfw\include;$(SolutionDir)dependence\libusb\include;$(SolutionDir)..\..\PE\PETool\src;$(SolutionDir)usb_fota\src\glad;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <WholeProgramOptimization>true</WholeProgramOptimization>
     </ClCompile>
@@ -164,16 +164,8 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="..\common\imgui\backends\imgui_impl_glfw.cpp" />
-    <ClCompile Include="..\common\imgui\backends\imgui_impl_opengl3.cpp" />
-    <ClCompile Include="..\common\imgui\backends\imgui_impl_win32.cpp" />
-    <ClCompile Include="..\common\imgui\extensions\ImConsole.cpp" />
-    <ClCompile Include="..\common\imgui\extensions\ImFileDialog.cpp" />
-    <ClCompile Include="..\common\imgui\imgui.cpp" />
-    <ClCompile Include="..\common\imgui\imgui_demo.cpp" />
-    <ClCompile Include="..\common\imgui\imgui_draw.cpp" />
-    <ClCompile Include="..\common\imgui\imgui_tables.cpp" />
-    <ClCompile Include="..\common\imgui\imgui_widgets.cpp" />
+    <ClCompile Include="..\common\iap_config.cpp" />
+    <ClCompile Include="..\common\itexture.cpp" />
     <ClCompile Include="..\common\util\aes.cpp" />
     <ClCompile Include="..\common\util\ini.c" />
     <ClCompile Include="..\common\util\INIReader.cpp" />
@@ -181,8 +173,18 @@
     <ClCompile Include="..\common\util\utils.cpp" />
     <ClCompile Include="src\bingen\bin.cpp" />
     <ClCompile Include="src\bingen\bingen.cpp" />
-    <ClCompile Include="src\bingen\execonfig.cpp" />
     <ClCompile Include="src\bingen\memedit.cpp" />
+    <ClCompile Include="src\glad\glad.c" />
+    <ClCompile Include="src\imgui\backends\imgui_impl_glfw.cpp" />
+    <ClCompile Include="src\imgui\backends\imgui_impl_opengl3.cpp" />
+    <ClCompile Include="src\imgui\backends\imgui_impl_win32.cpp" />
+    <ClCompile Include="src\imgui\extensions\ImConsole.cpp" />
+    <ClCompile Include="src\imgui\extensions\ImFileDialog.cpp" />
+    <ClCompile Include="src\imgui\imgui.cpp" />
+    <ClCompile Include="src\imgui\imgui_demo.cpp" />
+    <ClCompile Include="src\imgui\imgui_draw.cpp" />
+    <ClCompile Include="src\imgui\imgui_tables.cpp" />
+    <ClCompile Include="src\imgui\imgui_widgets.cpp" />
     <ClCompile Include="src\ingiap\ingiap.cpp" />
     <ClCompile Include="src\main.cpp" />
     <ClCompile Include="src\passthrough\passthrough.cpp" />

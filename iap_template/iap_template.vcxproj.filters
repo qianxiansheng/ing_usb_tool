@@ -22,9 +22,6 @@
     <ClCompile Include="src\main.cpp">
       <Filter>src</Filter>
     </ClCompile>
-    <ClCompile Include="src\config.cpp">
-      <Filter>src</Filter>
-    </ClCompile>
     <ClCompile Include="src\usb.cpp">
       <Filter>src</Filter>
     </ClCompile>
@@ -72,6 +69,12 @@
     </ClCompile>
     <ClCompile Include="..\common\util\PEUtils.cpp">
       <Filter>src\util</Filter>
+    </ClCompile>
+    <ClCompile Include="..\common\iap_config.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\common\itexture.cpp">
+      <Filter>src</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

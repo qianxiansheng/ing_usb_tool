@@ -42,6 +42,12 @@ void SaveSetting(std::filesystem::path ini_path)
 	out << "opt_bingen_configexe_expand=" << c.opt_bingen_configexe_expand << std::endl;
 	out << "opt_bingen_choosebin_show=" << c.opt_bingen_choosebin_show << std::endl;
 	out << "opt_bingen_choosebin_expand=" << c.opt_bingen_choosebin_expand << std::endl;
+
+	out << "opt_bingen_exe_tree_node_vid_pid_show=" << c.opt_bingen_exe_tree_node_vid_pid_show << std::endl;
+	out << "opt_bingen_exe_tree_node_options_show=" << c.opt_bingen_exe_tree_node_options_show << std::endl;
+	out << "opt_bingen_exe_tree_node_icon_show=" << c.opt_bingen_exe_tree_node_icon_show << std::endl;
+	out << "opt_bingen_exe_tree_node_resource_show=" << c.opt_bingen_exe_tree_node_resource_show << std::endl;
+	out << "opt_bingen_exe_tree_node_style_show=" << c.opt_bingen_exe_tree_node_style_show << std::endl;
 	out << std::endl;
 
 
@@ -78,5 +84,10 @@ void LoadSetting(std::filesystem::path ini_path)
 	c.opt_bingen_configexe_expand = reader.GetBoolean("settings", "opt_bingen_configexe_expand", true);
 	c.opt_bingen_choosebin_show = reader.GetBoolean("settings", "opt_bingen_choosebin_show", true);
 	c.opt_bingen_choosebin_expand = reader.GetBoolean("settings", "opt_bingen_choosebin_expand", true);
+	c.opt_bingen_exe_tree_node_vid_pid_show = reader.GetBoolean("settings", "opt_bingen_exe_tree_node_vid_pid_show", true);
+	c.opt_bingen_exe_tree_node_options_show = reader.GetBoolean("settings", "opt_bingen_exe_tree_node_options_show", true);
+	c.opt_bingen_exe_tree_node_icon_show = reader.GetBoolean("settings", "opt_bingen_exe_tree_node_icon_show", false);
+	c.opt_bingen_exe_tree_node_resource_show = reader.GetBoolean("settings", "opt_bingen_exe_tree_node_resource_show", false);
+	c.opt_bingen_exe_tree_node_style_show = reader.GetBoolean("settings", "opt_bingen_exe_tree_node_style_show", false);
 }
 

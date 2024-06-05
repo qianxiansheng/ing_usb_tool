@@ -26,6 +26,7 @@ struct app_settings_t
     bool opt_bingen_base_blocksize_show;
     bool opt_bingen_base_upgradetype_show;
 
+    // base
     bool opt_bingen_check_show;
     bool opt_bingen_check_expand;
     bool opt_bingen_encryption_show;
@@ -34,6 +35,13 @@ struct app_settings_t
     bool opt_bingen_configexe_expand;
     bool opt_bingen_choosebin_show;
     bool opt_bingen_choosebin_expand;
+
+    // config exe
+    bool opt_bingen_exe_tree_node_vid_pid_show;
+    bool opt_bingen_exe_tree_node_options_show;
+    bool opt_bingen_exe_tree_node_icon_show;
+    bool opt_bingen_exe_tree_node_resource_show;
+    bool opt_bingen_exe_tree_node_style_show;
 };
 
 void SaveSetting(std::filesystem::path ini_path);

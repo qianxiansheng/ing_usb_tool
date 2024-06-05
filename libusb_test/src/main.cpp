@@ -213,6 +213,21 @@ int main()
 #include "hidapi.h"
 #include "util/utils.h"
 
+uint8_t htoi_4(const char c)
+{
+	if ('0' <= c && c <= '9') return c - '0';
+	if ('A' <= c && c <= 'F') return c - 'A' + 10;
+	if ('a' <= c && c <= 'f') return c - 'a' + 10;
+	return 0;
+}
+uint8_t htoi_8(const char* c)
+{
+	return (htoi_4(c[0]) << 4) | htoi_4(c[1]);
+}
+uint16_t htoi_16(const char* c)
+{
+	return (htoi_8(c) << 8) | htoi_8(c + 2);
+}
 
 bool is_path_match_v_p_id(char* path, uint16_t vid, uint16_t pid)
 {
@@ -224,8 +239,8 @@ bool is_path_match_v_p_id(char* path, uint16_t vid, uint16_t pid)
 		ip == std::numeric_limits<size_t>::max())
 		return false;
 
-	uint16_t tvid = utils::htoi_16(path + iv + 4);
-	uint16_t tpid = utils::htoi_16(path + ip + 4);
+	uint16_t tvid = htoi_16(path + iv + 4);
+	uint16_t tpid = htoi_16(path + ip + 4);
 
 	if (tvid == vid && tpid == pid)
 		return true;

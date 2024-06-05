@@ -35,20 +35,6 @@ void Saveini(std::filesystem::path ini_path)
 	out << "encryption_iv=" << c.encryption_iv << std::endl;
 	out << std::endl;
 
-	out << "[style]" << std::endl;
-	out << "icon_name=" << c.icon_name_gbk << std::endl;
-	out << "color0=" << c.color0.colVO.x << "," << c.color0.colVO.y << "," << c.color0.colVO.z << "," << c.color0.colVO.w << std::endl;
-	out << "color1=" << c.color1.colVO.x << "," << c.color1.colVO.y << "," << c.color1.colVO.z << "," << c.color1.colVO.w << std::endl;
-	out << "color2=" << c.color2.colVO.x << "," << c.color2.colVO.y << "," << c.color2.colVO.z << "," << c.color2.colVO.w << std::endl;
-	out << "color3=" << c.color3.colVO.x << "," << c.color3.colVO.y << "," << c.color3.colVO.z << "," << c.color3.colVO.w << std::endl;
-	out << "color4=" << c.color4.colVO.x << "," << c.color4.colVO.y << "," << c.color4.colVO.z << "," << c.color4.colVO.w << std::endl;
-	out << "color5=" << c.color5.colVO.x << "," << c.color5.colVO.y << "," << c.color5.colVO.z << "," << c.color5.colVO.w << std::endl;
-	out << "color6=" << c.color6.colVO.x << "," << c.color6.colVO.y << "," << c.color6.colVO.z << "," << c.color6.colVO.w << std::endl;
-	out << "color7=" << c.color7.colVO.x << "," << c.color7.colVO.y << "," << c.color7.colVO.z << "," << c.color7.colVO.w << std::endl;
-	out << "color8=" << c.color8.colVO.x << "," << c.color8.colVO.y << "," << c.color8.colVO.z << "," << c.color8.colVO.w << std::endl;
-	out << "color9=" << c.color9.colVO.x << "," << c.color9.colVO.y << "," << c.color9.colVO.z << "," << c.color9.colVO.w << std::endl;
-	out << std::endl;
-
 	out << "[app]" << std::endl;
 	out << "name=" << c.app.name_gbk << std::endl;
 	out << "load_address=" << c.app.load_address << std::endl;
@@ -59,23 +45,6 @@ void Saveini(std::filesystem::path ini_path)
 	out << std::endl;
 
 	out.close();
-}
-
-ImVec4 loadImVec4FromString(std::string s) 
-{
-	ImVec4 r;
-	std::stringstream ss(s);
-	char delimiter = ',';
-	std::string token;
-	std::getline(ss, token, delimiter);
-	r.x = std::stof(token);
-	std::getline(ss, token, delimiter);
-	r.y = std::stof(token);
-	std::getline(ss, token, delimiter);
-	r.z = std::stof(token);
-	std::getline(ss, token, delimiter);
-	r.w = std::stof(token);
-	return r;
 }
 
 void Loadini(std::filesystem::path ini_path)
@@ -98,19 +67,6 @@ void Loadini(std::filesystem::path ini_path)
 	strcpy(c.encryption_xor,  reader.Get("option", "encryption_xor", "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF").c_str());
 	strcpy(c.encryption_key,  reader.Get("option", "encryption_key", "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF").c_str());
 	strcpy(c.encryption_iv,   reader.Get("option", "encryption_iv",  "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF").c_str());
-
-	strcpy(c.icon_name_gbk, reader.Get("style", "icon_name", "icon.png").c_str());
-	strcpy(c.icon_name, utils::gbk_to_utf8(c.icon_name_gbk).c_str());
-	c.color0.colVO = c.color0.colVE = loadImVec4FromString(reader.Get("style", "color0", "0,0,0,1"));
-	c.color1.colVO = c.color1.colVE = loadImVec4FromString(reader.Get("style", "color1", "0.941176,0.941176,0.941176,1"));
-	c.color2.colVO = c.color2.colVE = loadImVec4FromString(reader.Get("style", "color2", "0.258824,0.588235,0.980392,0.4"));
-	c.color3.colVO = c.color3.colVE = loadImVec4FromString(reader.Get("style", "color3", "0.258824,0.588235,0.980392,1"));
-	c.color4.colVO = c.color4.colVE = loadImVec4FromString(reader.Get("style", "color4", "0.0588235,0.529412,0.980392,1"));
-	c.color5.colVO = c.color5.colVE = loadImVec4FromString(reader.Get("style", "color5", "0.901961,0.701961,0,1"));
-	c.color6.colVO = c.color6.colVE = loadImVec4FromString(reader.Get("style", "color6", "1,1,1,1"));
-	c.color7.colVO = c.color7.colVE = loadImVec4FromString(reader.Get("style", "color7", "1,1,1,1"));
-	c.color8.colVO = c.color8.colVE = loadImVec4FromString(reader.Get("style", "color8", "1,1,1,1"));
-	c.color9.colVO = c.color9.colVE = loadImVec4FromString(reader.Get("style", "color9", "1,1,1,1"));
 
 	strcpy(c.platform.name_gbk, reader.Get("platform", "name", "").c_str());
 	strcpy(c.platform.name, utils::gbk_to_utf8(c.platform.name_gbk).c_str());

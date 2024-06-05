@@ -247,8 +247,11 @@ static BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
     LOG_INFO("Init hInstance");
     hInst = hInstance; // 将实例句柄存储在全局变量中
 
-    hWnd = CreateWindowW(szWindowClass, szTitle, WS_OVERLAPPEDWINDOW,
-        APP_X, APP_Y, APP_WIDTH, APP_HEIGHT, nullptr, nullptr, hInstance, nullptr);
+    int th = GetSystemMetrics(SM_CYCAPTION);
+    int fw = GetSystemMetrics(SM_CXSIZEFRAME);
+    
+    hWnd = CreateWindowW(szWindowClass, szTitle, WS_OVERLAPPEDWINDOW & ~WS_MAXIMIZEBOX,
+        APP_X, APP_Y, APP_WIDTH + fw + fw, APP_HEIGHT + th, nullptr, nullptr, hInstance, nullptr);
 
     if (!hWnd)
     {

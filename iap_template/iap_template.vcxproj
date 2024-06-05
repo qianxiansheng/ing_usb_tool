@@ -171,13 +171,14 @@
     </Manifest>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="..\common\iap_config.cpp" />
+    <ClCompile Include="..\common\itexture.cpp" />
     <ClCompile Include="..\common\util\aes.cpp" />
     <ClCompile Include="..\common\util\ini.c" />
     <ClCompile Include="..\common\util\INIReader.cpp" />
     <ClCompile Include="..\common\util\myqueue.cpp" />
     <ClCompile Include="..\common\util\PEUtils.cpp" />
     <ClCompile Include="..\common\util\utils.cpp" />
-    <ClCompile Include="src\config.cpp" />
     <ClCompile Include="src\glad\glad.c" />
     <ClCompile Include="src\iap.cpp" />
     <ClCompile Include="src\iap_template.cpp" />

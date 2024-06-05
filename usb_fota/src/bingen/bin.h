@@ -64,22 +64,6 @@ struct bin_config_t
 	unsigned char enc_iv[16];
 	//======================//====================================
 
-	bin_color_t color0 = { ImGuiCol_Text };
-	bin_color_t color1 = { ImGuiCol_WindowBg };
-	bin_color_t color2 = { ImGuiCol_Button };
-	bin_color_t color3 = { ImGuiCol_ButtonHovered };
-	bin_color_t color4 = { ImGuiCol_ButtonActive };
-	bin_color_t color5 = { ImGuiCol_PlotHistogram };
-	bin_color_t color6 = { ImGuiCol_FrameBg };
-	bin_color_t color7 = { ImGuiCol_Text };
-	bin_color_t color8 = { ImGuiCol_Text };
-	bin_color_t color9 = { ImGuiCol_Text };
-
-	char icon_name[BIN_NAME_BUFF_MAX_SIZE];
-	char icon_name_gbk[BIN_NAME_BUFF_MAX_SIZE];
-	uint32_t icon_data_size;
-	std::vector<uint8_t> icon_data;
-
 	//======================//====================================
 	int out_data_crc;
 	uint32_t out_data_load_addr;

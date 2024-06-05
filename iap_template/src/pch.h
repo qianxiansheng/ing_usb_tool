@@ -5,8 +5,8 @@
 #define APP_X				100
 #define APP_Y				50
 #define APP_WIDTH			600
-#define APP_HEIGHT			300
-#define APP_TITLE           L"Ingchips USB IAP tool"
+#define APP_HEIGHT			400
+#define APP_TITLE           L"USB IAP tool"
 #define DEFAULT_FONT		"c:\\Windows\\Fonts\\simhei.ttf"
 
 #define EP_MAX_SIZE  64

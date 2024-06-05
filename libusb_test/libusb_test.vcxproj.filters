@@ -4,9 +4,6 @@
     <Filter Include="src">
       <UniqueIdentifier>{10676e08-e9cb-4c4c-bd55-0ca2fff9094a}</UniqueIdentifier>
     </Filter>
-    <Filter Include="src\imgui">
-      <UniqueIdentifier>{2332e3d4-15a8-4ce0-9099-7f2eea5916a0}</UniqueIdentifier>
-    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\main.cpp">
@@ -20,33 +17,6 @@
     </ClCompile>
     <ClCompile Include="src\icon.cpp">
       <Filter>src</Filter>
-    </ClCompile>
-    <ClCompile Include="..\common\util\utils.cpp">
-      <Filter>src</Filter>
-    </ClCompile>
-    <ClCompile Include="..\common\imgui\imgui_widgets.cpp">
-      <Filter>src\imgui</Filter>
-    </ClCompile>
-    <ClCompile Include="..\common\imgui\imgui.cpp">
-      <Filter>src\imgui</Filter>
-    </ClCompile>
-    <ClCompile Include="..\common\imgui\imgui_demo.cpp">
-      <Filter>src\imgui</Filter>
-    </ClCompile>
-    <ClCompile Include="..\common\imgui\imgui_draw.cpp">
-      <Filter>src\imgui</Filter>
-    </ClCompile>
-    <ClCompile Include="..\common\imgui\imgui_tables.cpp">
-      <Filter>src\imgui</Filter>
-    </ClCompile>
-    <ClCompile Include="..\common\imgui\backends\imgui_impl_win32.cpp">
-      <Filter>src\imgui</Filter>
-    </ClCompile>
-    <ClCompile Include="..\common\imgui\backends\imgui_impl_glfw.cpp">
-      <Filter>src\imgui</Filter>
-    </ClCompile>
-    <ClCompile Include="..\common\imgui\backends\imgui_impl_opengl3.cpp">
-      <Filter>src\imgui</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

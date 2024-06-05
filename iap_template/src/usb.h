@@ -1,8 +1,11 @@
 #pragma once
 
 #include <iostream>
+#include <vector>
+#include <tuple>
 
 #include "hidapi.h"
+#include "libusb-1.0/libusb.h"
 
 
 enum HIDFindResultEnum
@@ -25,6 +28,6 @@ struct HIDDevice
 
 bool HIDInit();
 void HIDExit();
-HIDFindResultEnum OpenHIDInterface(uint16_t vid, uint16_t pid, HIDDevice* hid);
-HIDFindResultEnum OpenHIDInterface(uint16_t vid, uint16_t pid, uint8_t reportId, HIDDevice* hid);
+HIDFindResultEnum OpenHIDInterface(std::vector<std::tuple<uint16_t, uint16_t, uint8_t>>& vpridList, HIDDevice* hid);
 void CloseHIDInterface(HIDDevice hid);
+bool GetUSBDeviceInfo(std::vector<std::tuple<uint16_t, uint16_t, uint8_t>>& vpridList, uint16_t* VID, uint16_t* PID, uint16_t* bcdDevice);

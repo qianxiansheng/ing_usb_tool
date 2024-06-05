@@ -174,7 +174,7 @@ void* CreateTexture(uint8_t* data, int w, int h, char fmt)
     //glGenerateMipmap(GL_TEXTURE_2D);
     glBindTexture(GL_TEXTURE_2D, 0);
 
-    return (void*)tex;
+    return reinterpret_cast<void*>(static_cast<uintptr_t>(tex));
 }
 
 void DeleteTexture(void* tex) 

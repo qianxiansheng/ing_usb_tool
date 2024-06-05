@@ -1,7 +1,7 @@
 #include "bingen.h"
 
 #include "bin.h"
-#include "execonfig.h"
+#include "iap_config.h"
 
 #include <sstream>
 #include <fstream>
@@ -21,6 +21,7 @@
 #include "setting.h"
 
 #include "org/qxs/bmp/PNGLoader.hpp"
+#include "org/qxs/bmp/BMPLoader.hpp"
 #include "org/qxs/bmp/scaler/Scaler.hpp"
 #include "org/qxs/bmp/scaler/BilinearInterpolatorScaler.hpp"
 #include "org/qxs/PE/rsrc/ResourceDataDirBuilder.hpp"
@@ -31,11 +32,9 @@
 
 extern ImLogger* logger;
 extern bin_config_t bin_config;
-extern exe_config_t exe_config;
 extern uint8_t* p_mem;
 extern size_t s_mem;
 extern app_settings_t gSettings;
-
 
 static std::filesystem::path work_dir     = std::filesystem::current_path();
 static std::filesystem::path ini_path     = std::filesystem::current_path().concat("\\bin_config.ini");
@@ -44,9 +43,16 @@ static std::filesystem::path export_path;
 
 std::filesystem::path export_dir;
 
-float iconTextureWidth = 0;
-float iconTextureHeight = 0;
-ImTextureID iconTextureID = 0;
+static bool alert_flag = false;
+static char alert_message[256] = { 0 };
+
+exe_config_ui_t exe_config;
+
+void Alert(std::string message)
+{
+	alert_flag = true;
+	strcpy(alert_message, message.c_str());
+}
 
 void CalcCRC()
 {
@@ -118,57 +124,77 @@ static void ReloadApp()
 extern void* CreateTexture(uint8_t* data, int w, int h, char fmt);
 extern void DeleteTexture(void* tex);
 
-#define FORMAT_RGBA_GL                           0x1908
-static void LoadIconTexture(std::filesystem::path path)
+
+static bool ResourceIsBMP(uint8_t* header)
 {
-	std::vector<uint8_t> self = utils::readFileData(path);
-
-	int size = 128;
-
-	std::vector<uint8_t> icon;
-	LoadIconByPE(self.data(), icon, size);
-	std::vector<uint8_t> dst = icon;
-
-	size_t w = static_cast<size_t>(size);
-	size_t h = static_cast<size_t>(size);
-	for (size_t i = 0; i < h; ++i) {
-		for (size_t j = 0; j < w; ++j) {
-			size_t d = ((i * w) + j) * 4;
-			size_t s = (((h - 1 - i) * w) + j) * 4;
-			dst[d + 0] = icon[s + 2];
-			dst[d + 1] = icon[s + 1];
-			dst[d + 2] = icon[s + 0];
-			dst[d + 3] = icon[s + 3];
-		}
-	}
-	iconTextureWidth = static_cast<float>(w);
-	iconTextureHeight = static_cast<float>(h);
-	iconTextureID = (ImTextureID)CreateTexture(dst.data(), w, h, FORMAT_RGBA_GL);
+	return (header[0] == 'B' && header[1] == 'M');
 }
 
-static void ReloadIcon()
+static bool ResourceIsPNG(uint8_t* header)
 {
-	if (iconTextureID)
-		DeleteTexture((void*)iconTextureID);
+	return (header[0] == 0x89 && header[1] == 'P' && header[2] == 'N' && header[3] == 'G' &&
+		header[4] == '\r' && header[5] == '\n' && header[6] == 0x1A && header[7] == '\n');
+}
 
-	auto& c = bin_config;
+static void ResourceLoadTextureBMP(rsrc_ui_t& rsrc)
+{
+	if (rsrc.texID) {
+		DeleteTexture(rsrc.texID);
+		rsrc.texID = NULL;
+	}
 
-	c.icon_data.resize(c.icon_data_size);
-	utils::readFileData(c.icon_name_gbk, c.icon_data.data());
+	org::qxs::bmp::BMPLoader loader;
+	org::qxs::bmp::scaler::BilinearInterpolatorScaler scaler;
+	auto bitmap = loader.load_image(rsrc.name_gbk);
 
-	uint32_t size = 128;
-	int w = size;
-	int h = size;
+	rsrc.texSize.x = static_cast<float>(bitmap->_bitmaps[0]._w);
+	rsrc.texSize.y = static_cast<float>(bitmap->_bitmaps[0]._h);
+	rsrc.texID = (ImTextureID)CreateTexture(bitmap->_bitmaps[0]._d.data(), bitmap->_bitmaps[0]._w, bitmap->_bitmaps[0]._h, 1);
+}
+
+static void ResourceLoadTexturePNG(rsrc_ui_t& rsrc)
+{
+	if (rsrc.texID) {
+		DeleteTexture(rsrc.texID);
+		rsrc.texID = NULL;
+	}
 
 	org::qxs::bmp::PNGLoader loader;
 	org::qxs::bmp::scaler::BilinearInterpolatorScaler scaler;
-	auto bitmap = loader.load_image(c.icon_name_gbk);
-	auto viewIcon = scaler.scaler(bitmap->_bitmaps[0], w, h);
+	auto bitmap = loader.load_image(rsrc.name_gbk);
 
-	iconTextureWidth = static_cast<float>(w);
-	iconTextureHeight = static_cast<float>(h);
-	iconTextureID = (ImTextureID)CreateTexture(viewIcon._d.data(), w, h, FORMAT_RGBA_GL);
+	rsrc.texSize.x = static_cast<float>(bitmap->_bitmaps[0]._w);
+	rsrc.texSize.y = static_cast<float>(bitmap->_bitmaps[0]._h);
+	rsrc.texID = (ImTextureID)CreateTexture(bitmap->_bitmaps[0]._d.data(), bitmap->_bitmaps[0]._w, bitmap->_bitmaps[0]._h, 1);
 }
+
+void ResourceLoadTexture(rsrc_ui_t& rsrc)
+{
+	if (ResourceIsBMP(rsrc.buffer.data())) {
+		ResourceLoadTextureBMP(rsrc);
+	}
+	else if (ResourceIsPNG(rsrc.buffer.data())) {
+		ResourceLoadTexturePNG(rsrc);
+	}
+	else {
+		throw std::exception("Only support images in .png and .bmp formats.");
+	}
+}
+
+void ResourceLoadDataAndTexture(rsrc_ui_t& rsrc)
+{
+	std::filesystem::path path = rsrc.name_gbk;
+	rsrc.size = std::filesystem::is_regular_file(path) ?
+		static_cast<uint32_t>(std::filesystem::file_size(path)) : 0;
+	if (rsrc.size != 0) {
+		rsrc.buffer.resize(rsrc.size);
+		utils::readFileData(rsrc.name_gbk, rsrc.buffer.data());
+		ResourceLoadTexture(rsrc);
+	}
+}
+
+
+#define FORMAT_RGBA_GL                           0x1908
 
 static std::string ExportFileName0()
 {
@@ -233,27 +259,6 @@ static std::filesystem::path DefaultExportDir()
 	return std::filesystem::path(work_dir).concat("\\output\\");
 }
 
-void append_float(float v, uint8_t* outbuf)
-{
-	*(float*)outbuf = v;
-}
-
-void append_32_little(uint32_t v, uint8_t* outbuf)
-{
-	outbuf[0] = v >> 0;
-	outbuf[1] = v >> 8;
-	outbuf[2] = v >> 16;
-	outbuf[3] = v >> 24;
-}
-void append_16_little(uint16_t v, uint8_t* outbuf)
-{
-	outbuf[0] = v >> 0;
-	outbuf[1] = v >> 8;
-}
-void append_8_little(uint16_t v, uint8_t* outbuf)
-{
-	outbuf[0] = v >> 0;
-}
 
 static bool GenerateBin()
 {
@@ -261,10 +266,8 @@ static bool GenerateBin()
 		std::filesystem::create_directory(export_dir);
 
 	export_path = std::filesystem::path(export_dir).concat(ExportFileName());
-	
-	//=================================================================================
-	// Reload File Binary Data
-	//=================================================================================
+
+	/* Reload File Binary Data */
 	{
 		auto& c = bin_config;
 		if (c.upgrade_type == upgrade_type_e::UPGRADE_TYPE_PLATFORM_APP) {
@@ -289,35 +292,60 @@ static bool GenerateBin()
 		c.block_num = static_cast<uint16_t>(block_num);
 	}
 
+	/* Check Resource */
+	std::unordered_map<int, std::string> rsrc_enum_not_ready;
+	auto& rsrc_enums = get_rsrc_enums();
+	for (const auto& rsrc_key : rsrc_enums) {
+		bool check_ok = false;
+		std::string name_utf8;
+		for (const auto& rsrc : exe_config.rsrcs) {
+			if (rsrc.key == rsrc_key) {
+				if (std::filesystem::is_regular_file(rsrc.name_gbk) && rsrc.texID != NULL) {
+					check_ok = true;
+				} else {
+					name_utf8 = rsrc.name;
+				}
+				break;
+			}
+		}
+		if (!check_ok) {
+			rsrc_enum_not_ready[rsrc_key] = name_utf8;
+		}
+	}
+	if (rsrc_enum_not_ready.size() > 0) {
+		std::stringstream ss;
+		ss << "The following resources failed to load." << std::endl;
+		for (auto& entry : rsrc_enum_not_ready) {
+			std::string r = GetResourceKeyName(entry.first);
+			ss << "| " << r << "  -  " << entry.second << std::string(32 - entry.second.length(), ' ') << std::endl;
+		}
+		Alert(ss.str().c_str());
+		return false;
+	}
 
-
+	/* Generate firmware bin */
 	Exportbin(export_path);
-
-	std::cout << export_path << std::endl;
 
 	uint64_t size = std::filesystem::file_size(export_path);
 	bin_config.out_data.resize(size);
 	utils::readFileData(export_path, bin_config.out_data.data());
 
+	/* Binary viewer */
 	p_mem = bin_config.out_data.data();
 	s_mem = bin_config.out_data.size();
-
 	logger->AddLog("[Export] %s\n", utils::gbk_to_utf8(export_path.generic_string()).c_str());
 
-
-	// Exe Template
+	/* Exe Template */
 	std::vector<uint8_t> exeTemplate(sizeof(template_data));
 	memcpy(exeTemplate.data(), template_data, exeTemplate.size());
 
-	//=================================================================================
-	// Replace Icon
-	//=================================================================================
-	if (std::filesystem::exists(bin_config.icon_name_gbk))
+	/* Replace Icon */
+	if (std::filesystem::exists(exe_config.icon.name_gbk))
 	{
 		org::qxs::bmp::PNGLoader loader;
 		org::qxs::bmp::scaler::BilinearInterpolatorScaler scaler;
 
-		auto bitmap = loader.load_image(bin_config.icon_name_gbk);
+		auto bitmap = loader.load_image(exe_config.icon.name_gbk);
 		bitmap->_bitmaps.push_back(scaler.scaler(bitmap->_bitmaps[0], 16, 16));
 		bitmap->_bitmaps.push_back(scaler.scaler(bitmap->_bitmaps[0], 24, 24));
 		bitmap->_bitmaps.push_back(scaler.scaler(bitmap->_bitmaps[0], 32, 32));
@@ -339,75 +367,16 @@ static bool GenerateBin()
 		exeTemplate = org::qxs::pe::PEConverter::convertFile(peFile);
 	}
 
-	uint32_t suffix = IAP_GEN_EXE_SUFFIX;
-	uint32_t N = (uint32_t)exeTemplate.size();
-	uint32_t N_ = (uint32_t)bin_config.out_data.size();
-
-	std::vector<uint8_t> exeOut(N + N_ + 38 + 160);
-	int i = 0;
-	memcpy(exeOut.data() + i, exeTemplate.data(), N);                   i += N;
-	memcpy(exeOut.data() + i, bin_config.out_data.data(), N_);			i += N_;
-	append_16_little(exe_config.boot_vid,            exeOut.data() + i);i += 2;
-	append_16_little(exe_config.boot_pid,            exeOut.data() + i);i += 2;
-	append_8_little (exe_config.boot_rid,            exeOut.data() + i);i += 1;
-	append_16_little(exe_config.app_vid,             exeOut.data() + i);i += 2;
-	append_16_little(exe_config.app_pid,             exeOut.data() + i);i += 2;
-	append_8_little (exe_config.app_rid,             exeOut.data() + i);i += 1;
-	append_32_little(exe_config.retryNum,            exeOut.data() + i);i += 4;
-	append_32_little(exe_config.rebootDelay,         exeOut.data() + i);i += 4;
-	append_32_little(exe_config.switchDelay,         exeOut.data() + i);i += 4;
-	append_32_little(exe_config.searchDeviceTimeout, exeOut.data() + i);i += 4;
-	append_32_little(exe_config.readAckTimeout,      exeOut.data() + i);i += 4;
-	append_float(bin_config.color0.colVO.x,          exeOut.data() + i);i += 4;
-	append_float(bin_config.color0.colVO.y,          exeOut.data() + i);i += 4;
-	append_float(bin_config.color0.colVO.z,          exeOut.data() + i);i += 4;
-	append_float(bin_config.color0.colVO.w,          exeOut.data() + i);i += 4;
-	append_float(bin_config.color1.colVO.x,          exeOut.data() + i);i += 4;
-	append_float(bin_config.color1.colVO.y,          exeOut.data() + i);i += 4;
-	append_float(bin_config.color1.colVO.z,          exeOut.data() + i);i += 4;
-	append_float(bin_config.color1.colVO.w,          exeOut.data() + i);i += 4;
-	append_float(bin_config.color2.colVO.x,          exeOut.data() + i);i += 4;
-	append_float(bin_config.color2.colVO.y,          exeOut.data() + i);i += 4;
-	append_float(bin_config.color2.colVO.z,          exeOut.data() + i);i += 4;
-	append_float(bin_config.color2.colVO.w,          exeOut.data() + i);i += 4;
-	append_float(bin_config.color3.colVO.x,          exeOut.data() + i);i += 4;
-	append_float(bin_config.color3.colVO.y,          exeOut.data() + i);i += 4;
-	append_float(bin_config.color3.colVO.z,          exeOut.data() + i);i += 4;
-	append_float(bin_config.color3.colVO.w,          exeOut.data() + i);i += 4;
-	append_float(bin_config.color4.colVO.x,          exeOut.data() + i);i += 4;
-	append_float(bin_config.color4.colVO.y,          exeOut.data() + i);i += 4;
-	append_float(bin_config.color4.colVO.z,          exeOut.data() + i);i += 4;
-	append_float(bin_config.color4.colVO.w,          exeOut.data() + i);i += 4;
-	append_float(bin_config.color5.colVO.x,          exeOut.data() + i);i += 4;
-	append_float(bin_config.color5.colVO.y,          exeOut.data() + i);i += 4;
-	append_float(bin_config.color5.colVO.z,          exeOut.data() + i);i += 4;
-	append_float(bin_config.color5.colVO.w,          exeOut.data() + i);i += 4;
-	append_float(bin_config.color6.colVO.x,          exeOut.data() + i);i += 4;
-	append_float(bin_config.color6.colVO.y,          exeOut.data() + i);i += 4;
-	append_float(bin_config.color6.colVO.z,          exeOut.data() + i);i += 4;
-	append_float(bin_config.color6.colVO.w,          exeOut.data() + i);i += 4;
-	append_float(bin_config.color7.colVO.x,          exeOut.data() + i);i += 4;
-	append_float(bin_config.color7.colVO.y,          exeOut.data() + i);i += 4;
-	append_float(bin_config.color7.colVO.z,          exeOut.data() + i);i += 4;
-	append_float(bin_config.color7.colVO.w,          exeOut.data() + i);i += 4;
-	append_float(bin_config.color8.colVO.x,          exeOut.data() + i);i += 4;
-	append_float(bin_config.color8.colVO.y,          exeOut.data() + i);i += 4;
-	append_float(bin_config.color8.colVO.z,          exeOut.data() + i);i += 4;
-	append_float(bin_config.color8.colVO.w,          exeOut.data() + i);i += 4;
-	append_float(bin_config.color9.colVO.x,          exeOut.data() + i);i += 4;
-	append_float(bin_config.color9.colVO.y,          exeOut.data() + i);i += 4;
-	append_float(bin_config.color9.colVO.z,          exeOut.data() + i);i += 4;
-	append_float(bin_config.color9.colVO.w,          exeOut.data() + i);i += 4;
-	append_32_little(N, exeOut.data() + i);								i += 4;
-	append_32_little(suffix, exeOut.data() + i);						i += 4;
-
-	assert(exeOut.size() == i);
+	/* Export EXE */
+	std::vector<uint8_t> exeOut;
+	ExportEXEData(exe_config, exeTemplate, bin_config.out_data, exeOut);
 
 	auto exepath = std::filesystem::path(export_dir).concat("iap.exe");
 	std::ofstream ofs;
 	ofs.open(exepath, std::ios::out | std::ios::binary);
 	if (!ofs) {
 		logger->AddLog("[Info] Failed to gen exe(File In Use) %s\n", utils::gbk_to_utf8(exepath.generic_string()).c_str());
+		Alert("Export failed because the file is in use.");
 		return false;
 	} else {
 		ofs.write((const char*)exeOut.data(), exeOut.size());
@@ -445,6 +414,58 @@ static void ShowSubTitle(const char* title)
 	ImGuiDCYMargin(10);
 }
 
+bool FileInput(int id, char* buffer, char* buffer_gbk, int buf_size, uint32_t& data_size, std::vector<uint8_t>& data)
+{
+	ImGui::PushID(id);
+	char key[32];
+	sprintf_s(key, 32, "ICON_OPEN_%d", id);
+
+	char bin[BIN_NAME_BUFF_MAX_SIZE] = { 0 };
+	strcpy(bin, buffer);
+	ImGui::InputTextEx("##FILE_NAME", "", buffer, buf_size, ImVec2(0.0f, 0.0f), 0);
+	ImGui::SameLine();
+	if (ImGui::Button("Open##FILE_OPEN_BTN"))
+		ifd::FileDialog::Instance().Open(key, "Choose bin", "image {.png,.bmp}", false);
+	if (ifd::FileDialog::Instance().IsDone(key)) {
+		if (ifd::FileDialog::Instance().HasResult()) {
+			const std::vector<std::filesystem::path>& res = ifd::FileDialog::Instance().GetResults();
+			if (res.size() > 0) {
+				std::filesystem::path path = res[0];
+				std::string pathStr = path.u8string();
+				strcpy(buffer, pathStr.c_str());
+			}
+		}
+		ifd::FileDialog::Instance().Close();
+	}
+	if (buffer[0] != '\0')
+	{
+		ImGui::SameLine();
+		if (data_size == 0) {
+			ImGui::Text("Error: file not exists");
+		}
+		else {
+			ImGui::Text("OK. file size = %dB", data_size);
+		}
+	}
+	strcpy(buffer_gbk, utils::utf8_to_gbk(buffer).c_str());
+	auto path = buffer_gbk;
+	data_size = std::filesystem::is_regular_file(path) ?
+		static_cast<uint32_t>(std::filesystem::file_size(path)) : 0;
+	bool r = false;
+	if (data_size != 0 && (data.size() == 0 || strcmp(bin, buffer) != 0)) {
+		data.resize(data_size);
+		utils::readFileData(buffer_gbk, data.data());
+		r = true;
+	}
+	ImGui::PopID();
+	return r;
+}
+
+#ifndef IMGUI_DEFINE_MATH_OPERATORS
+static ImVec2 operator+(const ImVec2& a, const ImVec2& b) {
+	return ImVec2(a.x + b.x, a.y + b.y);
+}
+#endif
 void ShowBinGenWindow(bool* p_open)
 {
 	ImGuiWindowFlags window_flags = 0;
@@ -454,10 +475,6 @@ void ShowBinGenWindow(bool* p_open)
 	}
 
 	app_settings_t& s = gSettings;
-
-	bool show_alert_export_success = false;
-	bool show_alert_file_in_use = false;
-	bool show_alert_analysis_success = false;
 
 	const int cl = 200;
 	const float wv = 300.0f;
@@ -694,8 +711,8 @@ void ShowBinGenWindow(bool* p_open)
 		ImGuiTableFlags flags = ImGuiTableFlags_BordersV | ImGuiTableFlags_BordersOuterH | ImGuiTableFlags_RowBg | ImGuiTableFlags_NoBordersInBody;
 
 		ImGui::PushStyleVar(ImGuiStyleVar_IndentSpacing, 0.0f);
-
-		if (ImGui::TreeNode("Basic##CONFIG_EXE_BASIC"))
+		
+		if (s.opt_bingen_exe_tree_node_vid_pid_show && ImGui::TreeNodeEx("VID/PID##CONFIG_EXE_VID_PID", ImGuiTreeNodeFlags_DefaultOpen))
 		{
 			if (ImGui::BeginTable("vprid", 4, flags))
 			{
@@ -705,33 +722,27 @@ void ShowBinGenWindow(bool* p_open)
 				ImGui::TableSetupColumn("Report ID", ImGuiTableColumnFlags_WidthFixed, 120.0f);
 				ImGui::TableHeadersRow();
 
-				ImGui::TableNextRow();
-				ImGui::TableNextColumn();
-				ImGui::Text("BOOT");
-				ImGui::TableNextColumn();
-				ImGui::InputTextEx("##BOOT_VID", NULL, exe_config.tbvid, sizeof(exe_config.tbvid), ImVec2(100.0f, 0.0f), ImGuiInputTextFlags_CharsHexadecimal | ImGuiInputTextFlags_CharsUppercase);
-				ImGui::TableNextColumn();
-				ImGui::InputTextEx("##BOOT_PID", NULL, exe_config.tbpid, sizeof(exe_config.tbpid), ImVec2(100.0f, 0.0f), ImGuiInputTextFlags_CharsHexadecimal | ImGuiInputTextFlags_CharsUppercase);
-				ImGui::TableNextColumn();
-				ImGui::InputTextEx("##BOOT_RID", NULL, exe_config.tbrid, sizeof(exe_config.tbrid), ImVec2(100.0f, 0.0f), ImGuiInputTextFlags_CharsHexadecimal | ImGuiInputTextFlags_CharsUppercase);
+				for (int i = 0; i < exe_config.vpridsNum; ++i) 
+				{
+					ImGui::PushID(i);
+					auto& entry = exe_config.vprids[i];
+					ImGui::TableNextRow();
+					ImGui::TableNextColumn();
+					ImGui::Checkbox("##ENTRY_CHECK", &entry.checked);
+					ImGui::TableNextColumn();
+					if (!entry.checked) ImGui::BeginDisabled();
+					ImGui::InputTextEx("##BOOT_VID", NULL, entry.tvid, sizeof(entry.tvid), ImVec2(100.0f, 0.0f), ImGuiInputTextFlags_CharsHexadecimal | ImGuiInputTextFlags_CharsUppercase);
+					ImGui::TableNextColumn();
+					ImGui::InputTextEx("##BOOT_PID", NULL, entry.tpid, sizeof(entry.tpid), ImVec2(100.0f, 0.0f), ImGuiInputTextFlags_CharsHexadecimal | ImGuiInputTextFlags_CharsUppercase);
+					ImGui::TableNextColumn();
+					ImGui::InputTextEx("##BOOT_RID", NULL, entry.trid, sizeof(entry.trid), ImVec2(100.0f, 0.0f), ImGuiInputTextFlags_CharsHexadecimal | ImGuiInputTextFlags_CharsUppercase);
+					if (!entry.checked) ImGui::EndDisabled();
+					utils::ValidateU16Text(entry.tvid, entry.vid);
+					utils::ValidateU16Text(entry.tpid, entry.pid);
+					utils::ValidateU8Text (entry.trid, entry.rid);
 
-				//ImGui::TableNextRow();
-				//ImGui::TableNextColumn();
-				//ImGui::Text("APP");
-				//ImGui::TableNextColumn();
-				//ImGui::InputTextEx("##APP_VID", NULL, exe_config.tavid, sizeof(exe_config.tavid), ImVec2(100.0f, 0.0f), ImGuiInputTextFlags_CharsHexadecimal | ImGuiInputTextFlags_CharsUppercase);
-				//ImGui::TableNextColumn();
-				//ImGui::InputTextEx("##APP_PID", NULL, exe_config.tapid, sizeof(exe_config.tapid), ImVec2(100.0f, 0.0f), ImGuiInputTextFlags_CharsHexadecimal | ImGuiInputTextFlags_CharsUppercase);
-				//ImGui::TableNextColumn();
-				//ImGui::InputTextEx("##APP_RID", NULL, exe_config.tarid, sizeof(exe_config.tarid), ImVec2(100.0f, 0.0f), ImGuiInputTextFlags_CharsHexadecimal | ImGuiInputTextFlags_CharsUppercase);
-
-				utils::ValidateU16Text(exe_config.tbvid, exe_config.boot_vid);
-				utils::ValidateU16Text(exe_config.tbpid, exe_config.boot_pid);
-				utils::ValidateU8Text(exe_config.tbrid, exe_config.boot_rid);
-
-				utils::ValidateU16Text(exe_config.tavid, exe_config.app_vid);
-				utils::ValidateU16Text(exe_config.tapid, exe_config.app_pid);
-				utils::ValidateU8Text(exe_config.tarid, exe_config.app_rid);
+					ImGui::PopID();
+				}
 
 				ImGui::EndTable();
 			}
@@ -739,7 +750,7 @@ void ShowBinGenWindow(bool* p_open)
 			ImGui::TreePop();
 		}
 
-		if (ImGui::TreeNode("Options##CONFIG_EXE_OPTIONS"))
+		if (s.opt_bingen_exe_tree_node_options_show && ImGui::TreeNodeEx("Options##CONFIG_EXE_OPTIONS", 0 /*ImGuiTreeNodeFlags_DefaultOpen*/))
 		{
 			float al = 100.0f;
 			float lo = 13.0f;
@@ -816,20 +827,21 @@ void ShowBinGenWindow(bool* p_open)
 			ImGui::TreePop();
 		}
 
-		if (ImGui::TreeNode("Icon##CONFIG_EXE_ICON"))
+		if (s.opt_bingen_exe_tree_node_icon_show && ImGui::TreeNodeEx("Icon##CONFIG_EXE_ICON", ImGuiTreeNodeFlags_DefaultOpen))
 		{
+
 			char bin[BIN_NAME_BUFF_MAX_SIZE] = { 0 };
-			strcpy(bin, c.icon_name);
+			strcpy(bin, exe_config.icon.name);
 			//=================================================================================
 			// Input File Path
 			//=================================================================================
-			ImGui::InputTextEx("##ICON_NAME", "", c.icon_name, sizeof(c.icon_name), ImVec2(0.0f, 0.0f), 0);
+			ImGui::InputTextEx("##icon.name", "", exe_config.icon.name, sizeof(exe_config.icon.name), ImVec2(0.0f, 0.0f), 0);
 			//=================================================================================
 			// File Select
 			//=================================================================================
 			ImGui::SameLine();
 			if (ImGui::Button("Open##ICON_OPEN_BTN"))
-				ifd::FileDialog::Instance().Open("ICON_OPEN", "Choose bin", "png {.png},.*", false);
+				ifd::FileDialog::Instance().Open("ICON_OPEN", "Choose bin", "image {.png,.bmp}", false);
 			//=================================================================================
 			// File Dailog
 			//=================================================================================
@@ -839,7 +851,7 @@ void ShowBinGenWindow(bool* p_open)
 					if (res.size() > 0) {
 						std::filesystem::path path = res[0];
 						std::string pathStr = path.u8string();
-						strcpy(c.icon_name, pathStr.c_str());
+						strcpy(exe_config.icon.name, pathStr.c_str());
 					}
 				}
 				ifd::FileDialog::Instance().Close();
@@ -847,45 +859,87 @@ void ShowBinGenWindow(bool* p_open)
 			//=================================================================================
 			// Tip
 			//=================================================================================
-			if (c.icon_name[0] != '\0')
+			if (exe_config.icon.name[0] != '\0')
 			{
 				ImGui::SameLine();
-				if (c.icon_data_size == 0) {
+				if (exe_config.icon.size == 0) {
 					ImGui::Text("Error: file not exists");
 				}
 				else {
-					ImGui::Text("OK. file size = %dB", c.icon_data_size);
+					ImGui::Text("OK. file size = %dB", exe_config.icon.size);
 				}
 			}
-			strcpy(c.icon_name_gbk, utils::utf8_to_gbk(c.icon_name).c_str());
+			strcpy(exe_config.icon.name_gbk, utils::utf8_to_gbk(exe_config.icon.name).c_str());
 			//=================================================================================
 			// Get File Size
 			//=================================================================================
-			auto path = c.icon_name_gbk;
-			c.icon_data_size = std::filesystem::is_regular_file(path) ?
+			auto path = exe_config.icon.name_gbk;
+			exe_config.icon.size = std::filesystem::is_regular_file(path) ?
 				static_cast<uint32_t>(std::filesystem::file_size(path)) : 0;
 			//=================================================================================
 			// Reload File Binary Data | aligned to 16
 			//=================================================================================
-			if (c.icon_data_size != 0 && (c.icon_data.size() == 0 || strcmp(bin, c.icon_name) != 0)) {
-				ReloadIcon();
+			if (exe_config.icon.size != 0 && (exe_config.icon.buffer.size() == 0 || strcmp(bin, exe_config.icon.name) != 0)) {
+				exe_config.icon.buffer.resize(exe_config.icon.size);
+				utils::readFileData(exe_config.icon.name_gbk, exe_config.icon.buffer.data());
+				ResourceLoadTexture(exe_config.icon);
 			}
 
 			//=================================================================================
 			// Preview
 			//=================================================================================
-			if (iconTextureID)
+			if (exe_config.icon.texID)
 			{
-				ImGui::Image(iconTextureID, ImVec2(iconTextureWidth, iconTextureHeight));
+				ImGui::Image(exe_config.icon.texID, exe_config.icon.texSize);
 			}
-
 			ImGui::TreePop();
 		}
 
-		if (ImGui::TreeNode("Style##CONFIG_EXE_STYLE"))
+		if (s.opt_bingen_exe_tree_node_resource_show && ImGui::TreeNodeEx("Resource##CONFIG_EXE_RESOURCE", ImGuiTreeNodeFlags_DefaultOpen))
+		{
+			if (ImGui::BeginTable("resource_choose_table", 3, flags))
+			{
+				ImGui::TableSetupColumn("Name", ImGuiTableColumnFlags_WidthFixed, 178.0f);
+				ImGui::TableSetupColumn("Preview", ImGuiTableColumnFlags_WidthFixed, 120.0f);
+				ImGui::TableSetupColumn("File");
+				ImGui::TableHeadersRow();
+
+				for (int i = 0; i < exe_config.rsrcsNum; ++i)
+				{
+					auto& rsrc = exe_config.rsrcs[i];
+
+					ImGui::TableNextRow();
+					ImGui::TableNextColumn();
+					ImGui::Text(GetResourceKeyName(rsrc.key).c_str());
+					ImGui::TableNextColumn();
+					ImGui::Button("preview");
+					if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayShort))
+					{
+						ImGui::BeginTooltip();
+						ImGuiWindow* window = ImGui::GetCurrentWindow();
+						ImVec2 pos = window->DC.CursorPos;
+						window->DrawList->AddRectFilled(pos, pos + rsrc.texSize, ImGui::GetColorU32(ImVec4(0.9f, 0.9f, 0.9f, 1.0f)));
+						ImGui::Image(rsrc.texID, rsrc.texSize);
+						ImGui::EndTooltip();
+					}
+					ImGui::TableNextColumn();
+					if (FileInput(i, rsrc.name, rsrc.name_gbk, BIN_NAME_BUFF_MAX_SIZE, rsrc.size, rsrc.buffer)) 
+					{
+						ResourceLoadTexture(rsrc);
+					}
+				}
+				ImGui::EndTable();
+			}
+			ImGui::TreePop();
+		}
+
+		if (s.opt_bingen_exe_tree_node_style_show && ImGui::TreeNodeEx("Color##CONFIG_EXE_COLOR", ImGuiTreeNodeFlags_DefaultOpen))
 		{
 			auto& style = ImGui::GetStyle();
-			auto lambda = [&style](bin_color_t& item) {
+			auto lambda = [&style](color_ui_t& item) {
+				if (item.colID == ImGuiCol_COUNT)
+					return;
+
 				const char* name = ImGui::GetStyleColorName(item.colID);
 
 				ImGui::TableNextRow();
@@ -910,13 +964,10 @@ void ShowBinGenWindow(bool* p_open)
 				ImGui::TableSetupColumn("Value", ImGuiTableColumnFlags_WidthFixed, 240.0f);
 				ImGui::TableHeadersRow();
 
-				lambda(c.color0);
-				lambda(c.color1);
-				lambda(c.color2);
-				lambda(c.color3);
-				lambda(c.color4);
-				lambda(c.color5);
-				lambda(c.color6);
+				for (int i = 0; i < exe_config.colorsNum; ++i)
+				{
+					lambda(exe_config.colors[i]);
+				}
 
 				ImGui::EndTable();
 			}
@@ -1087,11 +1138,7 @@ void ShowBinGenWindow(bool* p_open)
 
 		if (GenerateBin())
 		{
-			show_alert_export_success = true;
-		}
-		else 
-		{
-			show_alert_file_in_use = true;
+			Alert("Export bin finished.");
 		}
 	}
 	ImGui::SameLine();
@@ -1109,7 +1156,7 @@ void ShowBinGenWindow(bool* p_open)
 	if (ImGui::Button("Analysis bin"))
 	{
 		AnalysisBin();
-		show_alert_analysis_success = true;
+		Alert("Analysis bin finished.");
 	}
 	if (!std::filesystem::exists(export_path))
 		ImGui::EndDisabled();
@@ -1121,24 +1168,26 @@ void ShowBinGenWindow(bool* p_open)
 
 			GenerateBin();
 
-			show_alert_analysis_success = true;
+			Alert("Analysis bin finished.");
 		}
 		ifd::FileDialog::Instance().Close();
 	}
 
-	utils::Alert(show_alert_export_success, "Message##m1", "Export bin finished.");
-	utils::Alert(show_alert_analysis_success, "Message##m2", "Analysis bin finished.");
-	utils::Alert(show_alert_file_in_use, "Message##m3", "Export failed because the file is in use.");
+	utils::AlertEx(&alert_flag, "Message", alert_message);
 	
-
-
 	ImGui::End();
 }
 
 void LoadBinGenINI()
 {
 	Loadini(ini_path);
-	LoadEXEConfig(ini_path_exe);
+	LoadEXEConfig(exe_config, ini_path_exe);
+
+	auto& rsrc_enums = get_rsrc_enums();
+	for (uint32_t i = 0; i < rsrc_enums.size(); ++i) {
+		ResourceLoadDataAndTexture(exe_config.rsrcs[i]);
+	}
+	ResourceLoadDataAndTexture(exe_config.icon);
 }
 
 void SaveBinGenINI()
@@ -1147,7 +1196,7 @@ void SaveBinGenINI()
 	if (frame_cnt % 100 == 0)
 	{
 		Saveini(ini_path);
-		SaveEXEConfig(ini_path_exe);
+		SaveEXEConfig(exe_config, ini_path_exe);
 	}
 	frame_cnt++;
 }
