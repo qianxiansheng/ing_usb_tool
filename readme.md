@@ -9,8 +9,8 @@
 
 ## 生成工具
 
-![iap_gen_tool](images\iap_gen_tool.png)
+![iap_gen_tool](images/iap_gen_tool.png)
 
 ## 升级包
 
-![iap_exe](images\iap_exe.png)
+![iap_exe](images/iap_exe.png)
