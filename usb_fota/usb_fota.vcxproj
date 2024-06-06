@@ -93,13 +93,13 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_SILENCE_CXX17_CODECVT_HEADER_DEPRECATION_WARNING;_SILENCE_CXX17_RESULT_OF_DEPRECATION_WARNING;_CRT_SECURE_NO_WARNINGS;WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(ProjectDir)src;$(ProjectDir)src\imgui;$(ProjectDir)src\imgui\backends;$(ProjectDir)src\imgui\extensions;$(SolutionDir)common;$(SolutionDir)dependence\glfw\include;$(SolutionDir)dependence\libusb\include;$(SolutionDir)..\..\PE\PETool\src;$(SolutionDir)usb_fota\src\glad;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)src;$(ProjectDir)src\imgui;$(ProjectDir)src\imgui\backends;$(ProjectDir)src\imgui\extensions;$(SolutionDir)common;$(SolutionDir)dependence\glfw\include;$(SolutionDir)dependence\libusb\include;$(SolutionDir)dependence\PETool\include;$(SolutionDir)usb_fota\src\glad;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>$(SolutionDir)dependence\glfw\lib\$(Platform);$(SolutionDir)dependence\libusb\lib\$(Platform)\$(Configuration)\;$(SolutionDir)..\..\PE\bin\$(Platform)\$(Configuration)\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(SolutionDir)dependence\glfw\lib\$(Platform);$(SolutionDir)dependence\libusb\lib\$(Platform)\$(Configuration)\;$(SolutionDir)dependence\PETool\lib\$(Platform)\$(Configuration)\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalDependencies>glfw3.lib;opengl32.lib;gdi32.lib;shell32.lib;libusb-1.0.lib;PETool.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
@@ -111,7 +111,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_SILENCE_CXX17_CODECVT_HEADER_DEPRECATION_WARNING;_SILENCE_CXX17_RESULT_OF_DEPRECATION_WARNING;_CRT_SECURE_NO_WARNINGS;WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(ProjectDir)src;$(ProjectDir)src\imgui;$(ProjectDir)src\imgui\backends;$(ProjectDir)src\imgui\extensions;$(SolutionDir)common;$(SolutionDir)dependence\glfw\include;$(SolutionDir)dependence\libusb\include;$(SolutionDir)..\..\PE\PETool\src;$(SolutionDir)usb_fota\src\glad;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)src;$(ProjectDir)src\imgui;$(ProjectDir)src\imgui\backends;$(ProjectDir)src\imgui\extensions;$(SolutionDir)common;$(SolutionDir)dependence\glfw\include;$(SolutionDir)dependence\libusb\include;$(SolutionDir)dependence\PETool\include;$(SolutionDir)usb_fota\src\glad;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <WholeProgramOptimization>false</WholeProgramOptimization>
     </ClCompile>
@@ -120,7 +120,7 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>$(SolutionDir)dependence\glfw\lib\$(Platform);$(SolutionDir)dependence\libusb\lib\$(Platform)\$(Configuration)\;$(SolutionDir)..\..\PE\bin\$(Platform)\$(Configuration)\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(SolutionDir)dependence\glfw\lib\$(Platform);$(SolutionDir)dependence\libusb\lib\$(Platform)\$(Configuration)\;$(SolutionDir)dependence\PETool\lib\$(Platform)\$(Configuration)\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalDependencies>glfw3.lib;opengl32.lib;gdi32.lib;shell32.lib;libusb-1.0.lib;PETool.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
@@ -130,13 +130,13 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_SILENCE_CXX17_CODECVT_HEADER_DEPRECATION_WARNING;_SILENCE_CXX17_RESULT_OF_DEPRECATION_WARNING;_CRT_SECURE_NO_WARNINGS;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(ProjectDir)src;$(ProjectDir)src\imgui;$(ProjectDir)src\imgui\backends;$(ProjectDir)src\imgui\extensions;$(SolutionDir)common;$(SolutionDir)dependence\glfw\include;$(SolutionDir)dependence\libusb\include;$(SolutionDir)..\..\PE\PETool\src;$(SolutionDir)usb_fota\src\glad;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)src;$(ProjectDir)src\imgui;$(ProjectDir)src\imgui\backends;$(ProjectDir)src\imgui\extensions;$(SolutionDir)common;$(SolutionDir)dependence\glfw\include;$(SolutionDir)dependence\libusb\include;$(SolutionDir)dependence\PETool\include;$(SolutionDir)usb_fota\src\glad;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>$(SolutionDir)dependence\glfw\lib\$(Platform);$(SolutionDir)dependence\libusb\lib\$(Platform)\$(Configuration)\;$(SolutionDir)..\..\PE\bin\$(Platform)\$(Configuration)\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(SolutionDir)dependence\glfw\lib\$(Platform);$(SolutionDir)dependence\libusb\lib\$(Platform)\$(Configuration)\;$(SolutionDir)dependence\PETool\lib\$(Platform)\$(Configuration)\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalDependencies>glfw3.lib;opengl32.lib;gdi32.lib;shell32.lib;libusb-1.0.lib;PETool.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
@@ -149,7 +149,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_SILENCE_CXX17_CODECVT_HEADER_DEPRECATION_WARNING;_SILENCE_CXX17_RESULT_OF_DEPRECATION_WARNING;_CRT_SECURE_NO_WARNINGS;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(ProjectDir)src;$(ProjectDir)src\imgui;$(ProjectDir)src\imgui\backends;$(ProjectDir)src\imgui\extensions;$(SolutionDir)common;$(SolutionDir)dependence\glfw\include;$(SolutionDir)dependence\libusb\include;$(SolutionDir)..\..\PE\PETool\src;$(SolutionDir)usb_fota\src\glad;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)src;$(ProjectDir)src\imgui;$(ProjectDir)src\imgui\backends;$(ProjectDir)src\imgui\extensions;$(SolutionDir)common;$(SolutionDir)dependence\glfw\include;$(SolutionDir)dependence\libusb\include;$(SolutionDir)dependence\PETool\include;$(SolutionDir)usb_fota\src\glad;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <WholeProgramOptimization>true</WholeProgramOptimization>
     </ClCompile>
@@ -159,7 +159,7 @@
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalDependencies>glfw3.lib;opengl32.lib;gdi32.lib;shell32.lib;libusb-1.0.lib;PETool.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>$(SolutionDir)dependence\glfw\lib\$(Platform);$(SolutionDir)dependence\libusb\lib\$(Platform)\$(Configuration)\;$(SolutionDir)..\..\PE\bin\$(Platform)\$(Configuration)\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(SolutionDir)dependence\glfw\lib\$(Platform);$(SolutionDir)dependence\libusb\lib\$(Platform)\$(Configuration)\;$(SolutionDir)dependence\PETool\lib\$(Platform)\$(Configuration)\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <StackReserveSize>3000000</StackReserveSize>
     </Link>
   </ItemDefinitionGroup>
